@@ -1,0 +1,60 @@
+package com.starklabs.moneytracker.ui.home
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import com.starklabs.moneytracker.data.MoneyRepository
+import com.starklabs.moneytracker.data.Transaction
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+
+data class DashboardState(
+    val totalSpent: Double = 0.0,
+    val totalIncome: Double = 0.0,
+    val balance: Double = 0.0,
+    val recentTransactions: List<Transaction> = emptyList(),
+    val budgetProgress: Float = 0.0f
+)
+
+class DashboardViewModel(private val repository: MoneyRepository) : ViewModel() {
+
+    // Seed defaults on init (simplified for this demo)
+    init {
+        viewModelScope.launch {
+            repository.seedDefaults()
+        }
+    }
+
+    val uiState: StateFlow<DashboardState> = combine(
+        repository.totalSpent,
+        repository.totalIncome,
+        repository.allTransactions
+    ) { spent, income, transactions ->
+        val s = spent ?: 0.0
+        val i = income ?: 0.0
+        val b = i - s
+        // Mock budget for progress (Total Budget = 25000)
+        val progress = (s / 25000.0).coerceIn(0.0, 1.0).toFloat()
+        
+        DashboardState(
+            totalSpent = s,
+            totalIncome = i,
+            balance = b,
+            recentTransactions = transactions.take(10), // Show top 10
+            budgetProgress = progress
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardState())
+}
+
+class DashboardViewModelFactory(private val repository: MoneyRepository) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return DashboardViewModel(repository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
