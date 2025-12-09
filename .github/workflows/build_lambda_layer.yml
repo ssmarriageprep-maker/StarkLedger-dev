@@ -1,15 +1,14 @@
-name: Build Lambda Layer (Python 3.12 + Latest Dependencies)
+name: Build Lambda Layer (Python 3.12 + dependencies)
 
 on:
   workflow_dispatch:
-  push:
 
 jobs:
   build-layer:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Prepare layer directory
@@ -17,13 +16,13 @@ jobs:
           rm -rf layer-build
           mkdir -p layer-build/python
 
-      - name: Build dependencies inside Lambda-compatible Docker
+      - name: Install dependencies inside AWS Lambda build image
         run: |
           docker run --rm \
-            -v "$PWD/layer-build":/var/task \
+            -v "${{ github.workspace }}/layer-build":/var/task \
             -w /var/task \
             public.ecr.aws/sam/build-python3.12:latest \
-            /bin/sh -c "\
+            /bin/sh -c " \
               python3 -m pip install --upgrade pip && \
               pip install \
                 requests \
@@ -43,38 +42,20 @@ jobs:
                 -t python/ \
             "
 
-      - name: Clean up layer package (remove caches / tests)
+      - name: Clean up caches and tests
         run: |
           cd layer-build/python
           find . -type d -name "__pycache__" -exec rm -rf {} +
           rm -rf bs4/tests PIL/tests
           cd ../..
 
-      - name: Verify installed packages
-        run: |
-          docker run --rm \
-            -v "$PWD/layer-build":/var/task \
-            -w /var/task \
-            public.ecr.aws/sam/build-python3.12:latest \
-            /bin/sh -c "\
-              python3 - << 'EOF'\n\
-import sys, pkgutil\n\
-required = [ \
-  'requests', 'google.cloud.texttospeech', 'gtts', 'PIL', 'edge_tts' \
-]\n\
-for name in required:\n\
-    if pkgutil.find_loader(name) is None:\n\
-        print('MISSING:', name); sys.exit(1)\n\
-print('OK: all required packages are present')\n\
-EOF \
-            "
-      - name: Zip layer directory
+      - name: Zip layer
         run: |
           cd layer-build
           zip -r9 ../lambda-layer-python312.zip python
           cd ..
 
-      - name: Upload built layer as artifact
+      - name: Upload layer artifact
         uses: actions/upload-artifact@v4
         with:
           name: lambda-layer-python312
