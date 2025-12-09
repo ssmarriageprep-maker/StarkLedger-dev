@@ -25,8 +25,10 @@ jobs:
             /bin/sh -c "
               set -e
               python3 -m pip install --upgrade pip
-              pip install \
-                requests \
+              python3.12 -m pip install \
+                --target python/lib/python3.12/site-packages \
+                --upgrade --no-cache-dir \
+                requests==2.31.0 \
                 google-cloud-texttospeech \
                 gTTS \
                 \"urllib3<2.0\" \
