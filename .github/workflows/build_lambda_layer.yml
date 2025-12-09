@@ -1,87 +1,71 @@
-name: Build Lambda Layer (Python 3.12)
+name: Build Lambda Layer (Python 3.12 + Latest TTS deps)
 
 on:
-  workflow_dispatch:  # Run manually from GitHub UI
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+    paths:
+      - ".github/workflows/build_lambda_layer.yml"
 
 jobs:
   build-layer:
     runs-on: ubuntu-latest
 
     steps:
-      # -------------------------------------
-      # 1) Checkout repo (even if empty)
-      # -------------------------------------
-      - name: Checkout repository
+      # 1) Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      # -------------------------------------
-      # 2) Prepare build directory
-      # -------------------------------------
-      - name: Prepare layer build directory
+      # 2) Prepare directory
+      - name: Prepare layer directory
         run: |
           rm -rf layer-build
           mkdir -p layer-build/python
-          sudo chmod +x -R layer-build/python
 
-      # -------------------------------------
-      # 3) Build deps using Lambda Python 3.12 image
-      # -------------------------------------
-      #   - NO requirements.txt
-      #   - All deps listed inline here
-      # -------------------------------------
-      - name: Install Python dependencies into /python (Lambda-style)
+      # 3) Build dependencies inside Lambda-compatible Docker
+      - name: Install dependencies to layer
         run: |
           docker run --rm \
             -v "$PWD/layer-build":/var/task \
             -w /var/task \
             public.ecr.aws/sam/build-python3.12 \
             bash -lc '
-              mkdir -p python && \
-              pip install --upgrade pip && \
+              python3 -m pip install --upgrade pip &&
               pip install \
-                "urllib3<2.0" \
-                "requests==2.31.0" \
-                "feedparser==6.0.11" \
-                "beautifulsoup4==4.12.3" \
-                "gTTS==2.3.2" \
-                "edge-tts==6.1.9" \
-                "elevenlabs==1.10.0" \
-                "google-genai==0.6.0" \
-                "python-dotenv==1.0.1" \
-                "Pillow==10.2.0" \
-                "google-api-python-client==2.92.0" \
-                "google-auth<2.24" \
-                "google-auth-oauthlib==1.1.0" \
-                "google-auth-httplib2==0.1.1" \
+                requests \
+                google-cloud-texttospeech \
+                gTTS \
+                urllib3<2.0 \
+                feedparser==6.0.11 \
+                beautifulsoup4==4.12.3 \
+                edge-tts==6.1.9 \
+                elevenlabs==1.10.0 \
+                python-dotenv==1.0.1 \
+                Pillow==10.2.0 \
+                google-api-python-client==2.92.0 \
+                google-auth<2.24 \
+                google-auth-oauthlib==1.1.0 \
+                google-auth-httplib2==0.1.1 \
                 -t python/
             '
 
-      # -------------------------------------
-      # 4) Strip unnecessary files (size matters)
-      # -------------------------------------
-      - name: Minimize layer size
+      # 4) Clean up unnecessary files to reduce size
+      - name: Cleanup layer
         run: |
           cd layer-build/python
-          # Remove Python caches
-          sudo find . -type d -name "__pycache__" -exec rm -rf {} +
-          # Optional: remove tests
-          sudo rm -rf bs4/tests PIL/tests
-
+          find . -type d -name "__pycache__" -exec rm -rf {} +
+          rm -rf bs4/tests PIL/tests
           cd ../..
 
-      # -------------------------------------
-      # 5) Zip the layer (python/ folder at root)
-      # -------------------------------------
-      - name: Create Lambda layer zip
+      # 5) Zip the layer
+      - name: Zip layer directory
         run: |
           cd layer-build
           zip -r9 ../lambda-layer-python312.zip python
           cd ..
 
-      # -------------------------------------
-      # 6) Upload zip as build artifact
-      # -------------------------------------
-      - name: Upload Lambda layer zip as artifact
+      # 6) Upload the zip as artifact for inspection / download
+      - name: Upload as GitHub artifact
         uses: actions/upload-artifact@v4
         with:
           name: lambda-layer-python312
