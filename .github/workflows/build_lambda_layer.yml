@@ -8,69 +8,82 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Prepare layer directory
+      # ----------------------------------------------------------------
+      # Build dependency layer using Lambda container
+      # ----------------------------------------------------------------
+      - name: Build Lambda dependencies via Docker
         run: |
-          #!/bin/bash
           set -e
-          
-          # Step 1: Update system
-          sudo apt update -y
-          sudo apt install -y python3.12 python3.12-pip python3.12-devel gcc
-          
-          # Step 2: Create layer directory structure
-          mkdir -p lambda_layer/python/lib/python3.12/site-packages
-          cd lambda_layer
-          
-          # Step 3: Install Python packages
-          python3.12 -m pip install \
-            --target python/lib/python3.12/site-packages \
-            --upgrade --no-cache-dir \
-            requests==2.31.0 \
-            google-cloud-texttospeech \
-            gTTS \
-            'urllib3<2.0' \
-            beautifulsoup4==4.12.3 \
-            feedparser==6.0.11 \
-            python-dotenv==1.0.1 \
-            edge-tts==6.1.9 \
-            elevenlabs==1.10.0 \
-            google-api-python-client==2.92.0 \
-            google-auth==2.23.0 \
-            google-auth-oauthlib==1.1.0 \
-            elevenlabs==2.24.0 \
-            gtts==2.3.2 \
-            Pillow==12.0.0\
-          
-          
-          # Step 4: Clean up to reduce size
-          cd python/lib/python3.12/site-packages
-          
-          # Remove dist-info directories
-          find . -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
-          
-          # Remove __pycache__ directories
-          find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
-          
-          # Remove test directories
-          find . -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
-          
-          # Remove .pyc files
-          find . -name "*.pyc" -delete 2>/dev/null || true
-          
-          # Step 5: Create zip file
-          cd ../../..
-          zip -r9 dependencies-layer.zip python/
-          
-          # Step 6: Check final size
-          du -sh python/
-          ls -lh dependencies-layer.zip
-          
-          echo "✅ Layer ready for deployment!"
 
-      - name: Upload Lambda Layer ZIP
+          rm -rf build_layer output
+          mkdir -p build_layer output
+
+          cat > build_layer/Dockerfile << 'EOF'
+FROM public.ecr.aws/lambda/python:3.12
+
+RUN yum install -y gcc python3-devel
+
+RUN pip install \
+    --target "${LAMBDA_TASK_ROOT}" \
+    --platform manylinux2014_x86_64 \
+    --only-binary=:all: \
+    --implementation cp \
+    --python-version 312 \
+    feedparser==6.0.11 \
+    beautifulsoup4==4.12.3 \
+    requests==2.31.0 \
+    google-api-python-client==2.92.0 \
+    google-auth==2.23.0 \
+    google-auth-oauthlib==1.1.0 \
+    gtts==2.3.2 \
+    edge-tts==6.1.9 \
+    elevenlabs==1.10.0 \
+    Pillow==10.2.0 \
+    python-dotenv==1.0.1
+
+RUN find "${LAMBDA_TASK_ROOT}" -type d -name "*.dist-info" -exec rm -rf {} + \
+ && find "${LAMBDA_TASK_ROOT}" -type d -name "__pycache__" -exec rm -rf {} + \
+ && find "${LAMBDA_TASK_ROOT}" -type d -name "tests" -exec rm -rf {} + \
+ && find "${LAMBDA_TASK_ROOT}" -name "*.pyc" -delete
+
+RUN mkdir -p /output/python/lib/python3.12/site-packages \
+ && cp -r "${LAMBDA_TASK_ROOT}"/* /output/python/lib/python3.12/site-packages/
+
+CMD ["cp","-r","/output/.","/lambda_layer/"]
+EOF
+
+          cd build_layer
+
+          docker build -t lambda-layer-builder .
+          docker run --rm -v "$PWD/../output":/lambda_layer lambda-layer-builder
+
+      # ----------------------------------------------------------------
+      # Zip layer
+      # ----------------------------------------------------------------
+      - name: Zip dependency layer
+        run: |
+          set -e
+
+          cd output
+          zip -r9 ../dependencies-layer.zip python/
+
+          echo "========== Layer size =========="
+          du -sh .
+
+          echo "========== Zip size =========="
+          ls -lh ../dependencies-layer.zip
+
+          echo "========== Sample contents =========="
+          unzip -l ../dependencies-layer.zip | head -40
+
+      # ----------------------------------------------------------------
+      # Upload GitHub artifact
+      # ----------------------------------------------------------------
+      - name: Upload Layer Artifact
         uses: actions/upload-artifact@v4
         with:
           name: dependencies-layer
