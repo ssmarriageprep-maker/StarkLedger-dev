@@ -17,8 +17,8 @@ jobs:
           set -e
           
           # Step 1: Update system
-          sudo yum update -y
-          sudo yum install -y python3.12 python3.12-pip python3.12-devel gcc
+          sudo apt update -y
+          sudo apt install -y python3.12 python3.12-pip python3.12-devel gcc
           
           # Step 2: Create layer directory structure
           mkdir -p lambda_layer/python/lib/python3.12/site-packages
