@@ -16,33 +16,39 @@ jobs:
           rm -rf layer-build
           mkdir -p layer-build/python
 
-      - name: Build Layer with Docker
+      - name: Build Lambda Layer inside Docker
         run: |
           docker run --rm \
             -v "${{ github.workspace }}/layer-build":/var/task \
             -w /var/task \
             public.ecr.aws/sam/build-python3.12 \
-            bash <<'EOF'
-          python3 -m pip install --upgrade pip
+            /bin/sh -c "
+              set -e
+              python3 -m pip install --upgrade pip
+              pip install \
+                requests \
+                google-cloud-texttospeech \
+                gTTS \
+                \"urllib3<2.0\" \
+                feedparser==6.0.11 \
+                beautifulsoup4==4.12.3 \
+                edge-tts==6.1.9 \
+                elevenlabs==1.10.0 \
+                python-dotenv==1.0.1 \
+                Pillow==10.2.0 \
+                google-api-python-client==2.92.0 \
+                \"google-auth<2.24\" \
+                google-auth-oauthlib==1.1.0 \
+                google-auth-httplib2==0.1.1 \
+                -t python/
+            "
 
-          pip install \
-            requests \
-            google-cloud-texttospeech \
-            gTTS \
-            "urllib3<2.0" \
-            feedparser==6.0.11 \
-            beautifulsoup4==4.12.3 \
-            edge-tts==6.1.9 \
-            elevenlabs==1.10.0 \
-            python-dotenv==1.0.1 \
-            Pillow==10.2.0 \
-            google-api-python-client==2.92.0 \
-            "google-auth<2.24" \
-            google-auth-oauthlib==1.1.0 \
-            google-auth-httplib2==0.1.1 \
-            -t python/
-
-          EOF
+      - name: Verify layer is NOT empty
+        run: |
+          echo "Layer size:"
+          du -sh layer-build/python
+          echo "Directory preview:"
+          ls -lh layer-build/python | head
 
       - name: Cleanup layer
         run: |
@@ -51,13 +57,17 @@ jobs:
           rm -rf bs4/tests PIL/tests
           cd ../..
 
-      - name: Zip Lambda Layer
+      - name: Zip Lambda layer
         run: |
           cd layer-build
           zip -r9 ../lambda-layer-python312.zip python
           cd ..
 
-      - name: Upload Artifact
+      - name: Show zip size
+        run: |
+          ls -lh lambda-layer-python312.zip
+
+      - name: Upload Lambda Layer ZIP
         uses: actions/upload-artifact@v4
         with:
           name: lambda-layer-python312
