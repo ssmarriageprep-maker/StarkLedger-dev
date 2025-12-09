@@ -52,6 +52,7 @@ jobs:
 
       - name: Cleanup layer
         run: |
+          sudo chmod +x -R layer-build/python
           cd layer-build/python
           find . -type d -name "__pycache__" -exec rm -rf {} +
           rm -rf bs4/tests PIL/tests
