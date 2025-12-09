@@ -1,4 +1,4 @@
-name: Build Lambda Layer (Python 3.12 + dependencies)
+name: Build Lambda Layer (Python 3.12)
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Prepare layer directory
@@ -16,46 +16,48 @@ jobs:
           rm -rf layer-build
           mkdir -p layer-build/python
 
-      - name: Install dependencies inside AWS Lambda build image
+      - name: Build Layer with Docker
         run: |
           docker run --rm \
             -v "${{ github.workspace }}/layer-build":/var/task \
             -w /var/task \
-            public.ecr.aws/sam/build-python3.12:latest \
-            /bin/sh -c " \
-              python3 -m pip install --upgrade pip && \
-              pip install \
-                requests \
-                google-cloud-texttospeech \
-                gTTS \
-                urllib3<2.0 \
-                feedparser==6.0.11 \
-                beautifulsoup4==4.12.3 \
-                edge-tts==6.1.9 \
-                elevenlabs==1.10.0 \
-                python-dotenv==1.0.1 \
-                Pillow==10.2.0 \
-                google-api-python-client==2.92.0 \
-                google-auth<2.24 \
-                google-auth-oauthlib==1.1.0 \
-                google-auth-httplib2==0.1.1 \
-                -t python/ \
-            "
+            public.ecr.aws/sam/build-python3.12 \
+            bash <<'EOF'
+          python3 -m pip install --upgrade pip
 
-      - name: Clean up caches and tests
+          pip install \
+            requests \
+            google-cloud-texttospeech \
+            gTTS \
+            "urllib3<2.0" \
+            feedparser==6.0.11 \
+            beautifulsoup4==4.12.3 \
+            edge-tts==6.1.9 \
+            elevenlabs==1.10.0 \
+            python-dotenv==1.0.1 \
+            Pillow==10.2.0 \
+            google-api-python-client==2.92.0 \
+            "google-auth<2.24" \
+            google-auth-oauthlib==1.1.0 \
+            google-auth-httplib2==0.1.1 \
+            -t python/
+
+          EOF
+
+      - name: Cleanup layer
         run: |
           cd layer-build/python
           find . -type d -name "__pycache__" -exec rm -rf {} +
           rm -rf bs4/tests PIL/tests
           cd ../..
 
-      - name: Zip layer
+      - name: Zip Lambda Layer
         run: |
           cd layer-build
           zip -r9 ../lambda-layer-python312.zip python
           cd ..
 
-      - name: Upload layer artifact
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: lambda-layer-python312
