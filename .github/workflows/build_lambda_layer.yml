@@ -1,36 +1,30 @@
-name: Build Lambda Layer (Python 3.12 + Latest TTS deps)
+name: Build Lambda Layer (Python 3.12 + Latest Dependencies)
 
 on:
   workflow_dispatch:
   push:
-    branches: [ "main" ]
-    paths:
-      - ".github/workflows/build_lambda_layer.yml"
 
 jobs:
   build-layer:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Checkout
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2) Prepare directory
       - name: Prepare layer directory
         run: |
           rm -rf layer-build
           mkdir -p layer-build/python
 
-      # 3) Build dependencies inside Lambda-compatible Docker
-      - name: Install dependencies to layer
+      - name: Build dependencies inside Lambda-compatible Docker
         run: |
           docker run --rm \
             -v "$PWD/layer-build":/var/task \
             -w /var/task \
-            public.ecr.aws/sam/build-python3.12 \
-            /bin/sh -c '
-              python3 -m pip install --upgrade pip &&
+            public.ecr.aws/sam/build-python3.12:latest \
+            /bin/sh -c "\
+              python3 -m pip install --upgrade pip && \
               pip install \
                 requests \
                 google-cloud-texttospeech \
@@ -46,26 +40,41 @@ jobs:
                 google-auth<2.24 \
                 google-auth-oauthlib==1.1.0 \
                 google-auth-httplib2==0.1.1 \
-                -t python/
-            '
+                -t python/ \
+            "
 
-      # 4) Clean up unnecessary files to reduce size
-      - name: Cleanup layer
+      - name: Clean up layer package (remove caches / tests)
         run: |
           cd layer-build/python
           find . -type d -name "__pycache__" -exec rm -rf {} +
           rm -rf bs4/tests PIL/tests
           cd ../..
 
-      # 5) Zip the layer
+      - name: Verify installed packages
+        run: |
+          docker run --rm \
+            -v "$PWD/layer-build":/var/task \
+            -w /var/task \
+            public.ecr.aws/sam/build-python3.12:latest \
+            /bin/sh -c "\
+              python3 - << 'EOF'\n\
+import sys, pkgutil\n\
+required = [ \
+  'requests', 'google.cloud.texttospeech', 'gtts', 'PIL', 'edge_tts' \
+]\n\
+for name in required:\n\
+    if pkgutil.find_loader(name) is None:\n\
+        print('MISSING:', name); sys.exit(1)\n\
+print('OK: all required packages are present')\n\
+EOF \
+            "
       - name: Zip layer directory
         run: |
           cd layer-build
           zip -r9 ../lambda-layer-python312.zip python
           cd ..
 
-      # 6) Upload the zip as artifact for inspection / download
-      - name: Upload as GitHub artifact
+      - name: Upload built layer as artifact
         uses: actions/upload-artifact@v4
         with:
           name: lambda-layer-python312
