@@ -23,38 +23,38 @@ jobs:
           mkdir -p build_layer output
 
           cat > build_layer/Dockerfile << 'EOF'
-FROM public.ecr.aws/lambda/python:3.12
-
-RUN yum install -y gcc python3-devel
-
-RUN pip install \
-    --target "${LAMBDA_TASK_ROOT}" \
-    --platform manylinux2014_x86_64 \
-    --only-binary=:all: \
-    --implementation cp \
-    --python-version 312 \
-    feedparser==6.0.11 \
-    beautifulsoup4==4.12.3 \
-    requests==2.31.0 \
-    google-api-python-client==2.92.0 \
-    google-auth==2.23.0 \
-    google-auth-oauthlib==1.1.0 \
-    gtts==2.3.2 \
-    edge-tts==6.1.9 \
-    elevenlabs==1.10.0 \
-    Pillow==10.2.0 \
-    python-dotenv==1.0.1
-
-RUN find "${LAMBDA_TASK_ROOT}" -type d -name "*.dist-info" -exec rm -rf {} + \
- && find "${LAMBDA_TASK_ROOT}" -type d -name "__pycache__" -exec rm -rf {} + \
- && find "${LAMBDA_TASK_ROOT}" -type d -name "tests" -exec rm -rf {} + \
- && find "${LAMBDA_TASK_ROOT}" -name "*.pyc" -delete
-
-RUN mkdir -p /output/python/lib/python3.12/site-packages \
- && cp -r "${LAMBDA_TASK_ROOT}"/* /output/python/lib/python3.12/site-packages/
-
-CMD ["cp","-r","/output/.","/lambda_layer/"]
-EOF
+          FROM public.ecr.aws/lambda/python:3.12
+          
+          RUN yum install -y gcc python3-devel
+          
+          RUN pip install \
+              --target "${LAMBDA_TASK_ROOT}" \
+              --platform manylinux2014_x86_64 \
+              --only-binary=:all: \
+              --implementation cp \
+              --python-version 312 \
+              feedparser==6.0.11 \
+              beautifulsoup4==4.12.3 \
+              requests==2.31.0 \
+              google-api-python-client==2.92.0 \
+              google-auth==2.23.0 \
+              google-auth-oauthlib==1.1.0 \
+              gtts==2.3.2 \
+              edge-tts==6.1.9 \
+              elevenlabs==1.10.0 \
+              Pillow==10.2.0 \
+              python-dotenv==1.0.1
+          
+          RUN find "${LAMBDA_TASK_ROOT}" -type d -name "*.dist-info" -exec rm -rf {} + \
+           && find "${LAMBDA_TASK_ROOT}" -type d -name "__pycache__" -exec rm -rf {} + \
+           && find "${LAMBDA_TASK_ROOT}" -type d -name "tests" -exec rm -rf {} + \
+           && find "${LAMBDA_TASK_ROOT}" -name "*.pyc" -delete
+          
+          RUN mkdir -p /output/python/lib/python3.12/site-packages \
+           && cp -r "${LAMBDA_TASK_ROOT}"/* /output/python/lib/python3.12/site-packages/
+          
+          CMD ["cp","-r","/output/.","/lambda_layer/"]
+          EOF
 
           cd build_layer
 
