@@ -13,58 +13,62 @@ jobs:
 
       - name: Prepare layer directory
         run: |
-          rm -rf layer-build
-          mkdir -p layer-build/python/lib/python3.12/site-packages
-
-      - name: Build Lambda Layer inside Docker
-        run: |
-          docker run --rm \
-            -v "${{ github.workspace }}/layer-build":/var/task \
-            -w /var/task \
-            public.ecr.aws/sam/build-python3.12 \
-            /bin/sh -c "
-              set -e
-              python3 -m pip install --upgrade pip
-              python3.12 -m pip install \
-                --target python/lib/python3.12/site-packages \
-                --upgrade --no-cache-dir \
-                requests==2.31.0 \
-                google-cloud-texttospeech \
-                gTTS \
-                \"urllib3<2.0\" \
-                feedparser==6.0.11 \
-                beautifulsoup4==4.12.3 \
-                edge-tts==6.1.9 \
-                elevenlabs==1.10.0 \
-                python-dotenv==1.0.1 \
-                Pillow==10.2.0 \
-                google-api-python-client==2.92.0 \
-                \"google-auth<2.24\" \
-                google-auth-oauthlib==1.1.0 \
-                google-auth-httplib2==0.1.1 \
-                -t python/lib/python3.12/site-packages
-            "
-
-      - name: Verify layer is NOT empty
-        run: |
-          echo "Layer size:"
-          du -sh layer-build/python
-          echo "Directory preview:"
-          ls -lh layer-build/python | head
-
-      - name: Cleanup layer
-        run: |
-          sudo chmod +x -R layer-build/python
-          cd layer-build/python
-          sudo find . -type d -name "__pycache__" -exec rm -rf {} +
-          sudo rm -rf bs4/tests PIL/tests
-          cd ../..
-
-      - name: Zip Lambda layer
-        run: |
-          cd layer-build
-          zip -r9 ../lambda-layer-python312.zip python
-          cd ..
+          #!/bin/bash
+          set -e
+          
+          # Step 1: Update system
+          sudo yum update -y
+          sudo yum install -y python3.12 python3.12-pip python3.12-devel gcc
+          
+          # Step 2: Create layer directory structure
+          mkdir -p lambda_layer/python/lib/python3.12/site-packages
+          cd lambda_layer
+          
+          # Step 3: Install Python packages
+          python3.12 -m pip install \
+            --target python/lib/python3.12/site-packages \
+            --upgrade --no-cache-dir \
+            requests==2.31.0 \
+            google-cloud-texttospeech \
+            gTTS \
+            'urllib3<2.0' \
+            beautifulsoup4==4.12.3 \
+            feedparser==6.0.11 \
+            python-dotenv==1.0.1 \
+            edge-tts==6.1.9 \
+            elevenlabs==1.10.0 \
+            google-api-python-client==2.92.0 \
+            google-auth==2.23.0 \
+            google-auth-oauthlib==1.1.0 \
+            elevenlabs==2.24.0 \
+            gtts==2.3.2 \
+            Pillow==12.0.0\
+          
+          
+          # Step 4: Clean up to reduce size
+          cd python/lib/python3.12/site-packages
+          
+          # Remove dist-info directories
+          find . -type d -name "*.dist-info" -exec rm -rf {} + 2>/dev/null || true
+          
+          # Remove __pycache__ directories
+          find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+          
+          # Remove test directories
+          find . -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true
+          
+          # Remove .pyc files
+          find . -name "*.pyc" -delete 2>/dev/null || true
+          
+          # Step 5: Create zip file
+          cd ../../..
+          zip -r9 dependencies-layer.zip python/
+          
+          # Step 6: Check final size
+          du -sh python/
+          ls -lh dependencies-layer.zip
+          
+          echo "✅ Layer ready for deployment!"
 
       - name: Show zip size
         run: |
