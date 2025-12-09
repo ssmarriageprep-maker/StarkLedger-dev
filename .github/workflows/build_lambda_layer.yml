@@ -70,13 +70,9 @@ jobs:
           
           echo "✅ Layer ready for deployment!"
 
-      - name: Show zip size
-        run: |
-          ls -lh lambda-layer-python312.zip
-
       - name: Upload Lambda Layer ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: lambda-layer-python312
-          path: lambda-layer-python312.zip
+          name: dependencies-layer
+          path: dependencies-layer.zip
           retention-days: 7
