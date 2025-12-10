@@ -1,0 +1,72 @@
+name: Gradle Wrapper Validation and Fix
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  workflow_dispatch:
+
+jobs:
+  validate-and-fix-wrapper:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Check if Gradle wrapper exists
+        id: check_wrapper
+        run: |
+          if [ ! -f "./gradlew" ]; then
+            echo "wrapper_missing=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Gradle wrapper (gradlew) is missing!"
+          else
+            echo "wrapper_missing=false" >> $GITHUB_OUTPUT
+            echo "✅ Gradle wrapper exists"
+          fi
+      
+      - name: Install Gradle (if wrapper is missing)
+        if: steps.check_wrapper.outputs.wrapper_missing == 'true'
+        run: |
+          wget https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          unzip -q gradle-8.9-bin.zip
+          sudo mv gradle-8.9 /opt/gradle
+          export PATH=/opt/gradle/bin:$PATH
+          gradle --version
+      
+      - name: Generate Gradle wrapper
+        if: steps.check_wrapper.outputs.wrapper_missing == 'true'
+        run: |
+          export PATH=/opt/gradle/bin:$PATH
+          gradle wrapper --gradle-version 8.9
+          chmod +x ./gradlew
+          echo "✅ Gradle wrapper generated successfully"
+      
+      - name: Validate Gradle wrapper
+        uses: gradle/wrapper-validation-action@v2
+      
+      - name: Commit and push wrapper files (if missing)
+        if: steps.check_wrapper.outputs.wrapper_missing == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add gradlew gradlew.bat gradle/wrapper/
+          git diff --staged --quiet || git commit -m "chore: Add missing Gradle wrapper files"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Test Gradle wrapper
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --version
+          echo "✅ Gradle wrapper is working correctly"
