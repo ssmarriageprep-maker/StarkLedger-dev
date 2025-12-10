@@ -31,9 +31,9 @@ class AnalyticsViewModel(private val repository: MoneyRepository) : ViewModel() 
         val categoryMap = transactions.filter { it.type == "DEBIT" }.groupBy { it.merchant } // approximating category by merchant for now
         val totalDebit = transactions.filter { it.type == "DEBIT" }.sumOf { it.amount }
         
-        val slices = categoryMap.map { (cat, list) ->
+        val slices = categoryMap.map { (cat: String, list: List<Transaction>) ->
             val sum = list.sumOf { it.amount }
-            val portion = (sum / totalDebit).toFloat()
+            val portion = if (totalDebit > 0.0) (sum / totalDebit).toFloat() else 0f
             Slice(
                 value = portion,
                 color = when(cat.hashCode() % 5) {
@@ -50,7 +50,7 @@ class AnalyticsViewModel(private val repository: MoneyRepository) : ViewModel() 
         // 2. Process Weekly Spending (Last 7 days approx)
         // Mocking trend for visualization if empty
         val trend = if (transactions.isEmpty()) listOf(0.2f, 0.4f, 0.3f, 0.8f, 0.5f, 0.9f, 0.6f) 
-                   else transactions.take(7).map { (it.amount / 5000).toFloat().coerceIn(0f, 1f) }
+                   else transactions.take(7).map { (it.amount / 5000.0).toFloat().coerceIn(0f, 1f) }
 
         AnalyticsState(
             pieSlices = slices,
