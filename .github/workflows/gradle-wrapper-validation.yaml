@@ -56,6 +56,13 @@ jobs:
           chmod +x ./gradlew
           echo "✅ Gradle wrapper generated successfully"
       
+      - name: Clean up temporary files
+        if: steps.check_wrapper.outputs.wrapper_missing == 'true'
+        run: |
+          rm -f gradle-8.9-bin.zip
+          sudo rm -rf /opt/gradle
+          echo "✅ Cleaned up temporary Gradle installation files"
+      
       - name: Validate Gradle wrapper
         uses: gradle/wrapper-validation-action@v2
       
