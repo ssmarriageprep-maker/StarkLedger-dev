@@ -8,7 +8,7 @@ import com.starklabs.moneytracker.data.Transaction
 import com.starklabs.moneytracker.ui.theme.*
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 data class Slice(
@@ -25,13 +25,13 @@ data class AnalyticsState(
 
 class AnalyticsViewModel(private val repository: MoneyRepository) : ViewModel() {
 
-    val uiState = combine(repository.allTransactions) { transactions ->
+    val uiState = repository.allTransactions.map { transactions ->
         // 1. Process Pie Chart (By Category)
         // Simplified mapping for demo. Real app would join with Category table.
         val categoryMap = transactions.filter { it.type == "DEBIT" }.groupBy { it.merchant } // approximating category by merchant for now
         val totalDebit = transactions.filter { it.type == "DEBIT" }.sumOf { it.amount }
         
-        val slices = categoryMap.map { (cat: String, list: List<Transaction>) ->
+        val slices = categoryMap.map { (cat, list) ->
             val sum = list.sumOf { it.amount }
             val portion = if (totalDebit > 0.0) (sum / totalDebit).toFloat() else 0f
             Slice(
