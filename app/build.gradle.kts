@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.starklabs.moneytracker"
-    compileSdk = 35
+    compileSdk = 34
 
     defaultConfig {
         applicationId = "com.starklabs.moneytracker"
@@ -20,6 +20,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            isMinifyEnabled = false
+        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -28,6 +32,7 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
