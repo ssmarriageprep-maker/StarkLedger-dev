@@ -18,6 +18,8 @@ import androidx.navigation.NavController
 import com.starklabs.moneytracker.ui.components.GlassCard
 import com.starklabs.moneytracker.ui.components.NeonText
 import com.starklabs.moneytracker.ui.theme.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 @Composable
 fun AnalyticsScreen(
@@ -26,12 +28,6 @@ fun AnalyticsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     
-    Box(modifier = Modifier.fillMaxSize().background(StarkBlack)) {
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-
-// ...
-
     Box(modifier = Modifier.fillMaxSize().background(StarkBlack)) {
         Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
              NeonText(text = "FINANCIAL INTELLIGENCE", style = MaterialTheme.typography.headlineMedium)
