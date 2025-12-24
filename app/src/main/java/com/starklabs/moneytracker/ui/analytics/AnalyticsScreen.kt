@@ -27,7 +27,13 @@ fun AnalyticsScreen(
     val state by viewModel.uiState.collectAsState()
     
     Box(modifier = Modifier.fillMaxSize().background(StarkBlack)) {
-        Column(modifier = Modifier.padding(16.dp)) {
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+
+// ...
+
+    Box(modifier = Modifier.fillMaxSize().background(StarkBlack)) {
+        Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
              NeonText(text = "FINANCIAL INTELLIGENCE", style = MaterialTheme.typography.headlineMedium)
              
              Spacer(modifier = Modifier.height(24.dp))
@@ -53,6 +59,115 @@ fun AnalyticsScreen(
              GlassCard(modifier = Modifier.fillMaxWidth().height(150.dp)) {
                  GlowingLineChart(data = state.weeklySpending, modifier = Modifier.fillMaxSize())
              }
+             
+             Spacer(modifier = Modifier.height(24.dp))
+
+             // Income vs Expense
+             NeonText(text = "CASH FLOW", color = NeonCyan)
+             GlassCard(modifier = Modifier.fillMaxWidth().height(120.dp)) {
+                 IncomeExpenseChart(income = state.totalIncome, expense = state.totalExpense)
+             }
+             
+             Spacer(modifier = Modifier.height(24.dp))
+             
+             // Category Breakdown
+             if (state.categoryPerformance.isNotEmpty()) {
+                 NeonText(text = "CATEGORY PERFORMANCE", color = NeonCyan)
+                 state.categoryPerformance.forEach { perf ->
+                     Spacer(modifier = Modifier.height(8.dp))
+                     GlassCard(modifier = Modifier.fillMaxWidth()) {
+                         Column {
+                             Row(
+                                 modifier = Modifier.fillMaxWidth(),
+                                 horizontalArrangement = Arrangement.SpaceBetween
+                             ) {
+                                 NeonText(text = perf.name, color = perf.color)
+                                 NeonText(
+                                     text = "${(perf.percentage * 100).toInt()}%", 
+                                     color = if (perf.percentage > 0.9f) MetallicRed else TextWhite
+                                 )
+                             }
+                             Spacer(modifier = Modifier.height(8.dp))
+                             
+                             // Progress Bar
+                             Box(
+                                 modifier = Modifier
+                                     .fillMaxWidth()
+                                     .height(6.dp)
+                                     .background(StarkSurface, MaterialTheme.shapes.small)
+                             ) {
+                                 Box(
+                                     modifier = Modifier
+                                         .fillMaxWidth(perf.percentage)
+                                         .fillMaxHeight()
+                                         .background(perf.color, MaterialTheme.shapes.small)
+                                 )
+                             }
+                             
+                             Spacer(modifier = Modifier.height(4.dp))
+                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                 NeonText(
+                                     text = "₹${perf.spent.toInt()} / ₹${perf.budget.toInt()}",
+                                     style = MaterialTheme.typography.labelSmall,
+                                     color = TextGrey
+                                 )
+                             }
+                         }
+                     }
+                 }
+             }
+             
+             Spacer(modifier = Modifier.height(32.dp)) // Bottom Padding
+        }
+    }
+}
+
+@Composable
+fun IncomeExpenseChart(income: Double, expense: Double) {
+    val max = maxOf(income, expense, 1.0)
+    
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp),
+        verticalArrangement = Arrangement.SpaceEvenly
+    ) {
+        // Income Bar
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            NeonText(text = "IN", color = NeonCyan, style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(30.dp))
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(8.dp)
+                    .background(StarkSurface, MaterialTheme.shapes.small)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth((income / max).toFloat())
+                        .fillMaxHeight()
+                        .background(NeonCyan, MaterialTheme.shapes.small)
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            NeonText(text = "₹${income.toInt()}", color = TextWhite, style = MaterialTheme.typography.labelSmall)
+        }
+        
+        // Expense Bar
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            NeonText(text = "OUT", color = MetallicRed, style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(30.dp))
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(8.dp)
+                    .background(StarkSurface, MaterialTheme.shapes.small)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth((expense / max).toFloat())
+                        .fillMaxHeight()
+                        .background(MetallicRed, MaterialTheme.shapes.small)
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            NeonText(text = "₹${expense.toInt()}", color = TextWhite, style = MaterialTheme.typography.labelSmall)
         }
     }
 }

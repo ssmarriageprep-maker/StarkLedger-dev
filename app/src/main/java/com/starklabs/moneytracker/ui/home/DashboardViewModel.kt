@@ -31,13 +31,18 @@ class DashboardViewModel(private val repository: MoneyRepository) : ViewModel() 
     val uiState: StateFlow<DashboardState> = combine(
         repository.totalSpent,
         repository.totalIncome,
-        repository.allTransactions
-    ) { spent, income, transactions ->
+        repository.allTransactions,
+        repository.allCategories
+    ) { spent, income, transactions, categories ->
         val s = spent ?: 0.0
         val i = income ?: 0.0
         val b = i - s
-        // Mock budget for progress (Total Budget = 25000)
-        val progress = (s / 25000.0).coerceIn(0.0, 1.0).toFloat()
+        
+        // Calculate Total Budget dynamically from Categories
+        // Default to a reasonable fallback if no categories set, though we seed defaults.
+        val totalBudget = categories.sumOf { it.budgetLimit }.takeIf { it > 0 } ?: 25000.0
+        
+        val progress = (s / totalBudget).coerceIn(0.0, 1.0).toFloat()
         
         DashboardState(
             totalSpent = s,

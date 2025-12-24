@@ -133,15 +133,19 @@ fun AddTransactionScreen(
                 onDone = {
                     if (amountStr.isNotEmpty()) {
                         val amount = amountStr.toDouble()
-                        val transaction = Transaction(
-                            amount = amount,
-                            merchant = if (selectedType == "DEBIT") (selectedCategory?.name ?: "Expense") else "Income",
-                            date = System.currentTimeMillis(),
-                            type = selectedType,
-                            accountId = 1, // Default Account
-                            categoryId = selectedCategory?.id
-                        )
                         scope.launch {
+                            // Fetch a valid account ID dynamically
+                            val defaultAccount = repository.getDefaultAccount()
+                            val accountId = defaultAccount?.id ?: 1 // Fallback to 1 only if absolutely nothing found (which implies DB empty)
+                            
+                            val transaction = Transaction(
+                                amount = amount,
+                                merchant = if (selectedType == "DEBIT") (selectedCategory?.name ?: "Expense") else "Income",
+                                date = System.currentTimeMillis(),
+                                type = selectedType,
+                                accountId = accountId,
+                                categoryId = selectedCategory?.id
+                            )
                             repository.addTransaction(transaction)
                             navController.popBackStack()
                         }

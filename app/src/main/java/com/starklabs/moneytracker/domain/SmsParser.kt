@@ -15,8 +15,8 @@ data class ParsedSms(
 object SmsParser {
 
     private val AMOUNT_PATTERN = Pattern.compile("(?i)(?:Rs\\.?|INR)\\s*(\\d+(?:,\\d+)*(?:\\.\\d{1,2})?)")
-    private val DEBIT_KEYWORDS = listOf("debited", "spent", "paid", "sent", "withdrawal")
-    private val CREDIT_KEYWORDS = listOf("credited", "received", "deposited", "added")
+    private val DEBIT_KEYWORDS = listOf("debited", "spent", "paid", "sent", "withdrawal", "purchase", "charged", "used at", "txn")
+    private val CREDIT_KEYWORDS = listOf("credited", "received", "deposited", "added", "refund", "salary", "inward")
 
     // Pattern to find "ac 1234" or "ending 1234" or "XX1234"
     private val ACCOUNT_PATTERN = Pattern.compile("(?i)(?:a/c|ac|account|ending|no\\.|xx)\\s*[\\-:]?\\s*([xX]*\\d{3,4})")

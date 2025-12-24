@@ -37,6 +37,13 @@ class MoneyRepository(
         return accountDao.getAccountByMaskedNumber(last4)
     }
 
+    // Default Account (Fallback)
+    suspend fun getDefaultAccount(): Account? {
+        // Return Cash account or just the first available one
+        val account = accountDao.getAllAccounts().firstOrNull()?.firstOrNull { it.type == "CASH" }
+        return account ?: accountDao.getAllAccounts().firstOrNull()?.firstOrNull()
+    }
+
     // Categories
     val allCategories: Flow<List<Category>> = categoryDao.getAllCategories()
     suspend fun addCategory(category: Category) = categoryDao.insert(category)
