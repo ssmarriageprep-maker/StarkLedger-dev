@@ -63,6 +63,10 @@ class AnalyticsViewModel(private val repository: MoneyRepository) : ViewModel() 
             )
         }.sortedByDescending { it.value }.take(5) // Top 5
         
+        // 2. Process Weekly Spending (Last 7 days approx)
+        val trend = if (transactions.isEmpty()) emptyList() 
+                   else transactions.take(7).map { (it.amount / 5000.0).toFloat().coerceIn(0f, 1f) }
+
         // 3. Process Category Performance
         val performance = categoryMap.mapNotNull { (catId, list) ->
             val category = categories.find { it.id == catId } ?: return@mapNotNull null
