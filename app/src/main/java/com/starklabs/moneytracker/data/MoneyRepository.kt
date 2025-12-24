@@ -4,6 +4,7 @@ import com.starklabs.moneytracker.data.AccountDao
 import com.starklabs.moneytracker.data.CategoryDao
 import com.starklabs.moneytracker.data.TransactionDao
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.firstOrNull
 
 class MoneyRepository(
     private val transactionDao: TransactionDao,
@@ -60,6 +61,10 @@ class MoneyRepository(
     }
     
     suspend fun seedDefaults() {
+        if (categoryDao.getAllCategoriesOneShot().isNotEmpty()) {
+            return
+        }
+
         val categories = listOf(
             Category(name = "Food", iconName = "restaurant", budgetLimit = 5000.0, colorHex = "#FFD700", keywords = "swiggy,zomato,mcdonalds,starbucks,cafe"),
             Category(name = "Rent", iconName = "home", budgetLimit = 15000.0, colorHex = "#00B0FF", keywords = "rent,landlord,housing"),
@@ -69,13 +74,15 @@ class MoneyRepository(
         )
         categoryDao.insertAll(categories)
         
+        // Similarly for accounts, check if any exist
+        if (accountDao.getAllAccounts().firstOrNull()?.isNotEmpty() == true) return
+
         val accounts = listOf(
              Account(name = "Cash", type = "CASH", balance = 500.0, colorHex = "#00B0FF", maskedNumber = null),
              Account(name = "HDFC Bank", type = "BANK", balance = 150000.0, colorHex = "#FFD700", maskedNumber = "1234"),
              Account(name = "SBI Credit", type = "CREDIT_CARD", balance = -20000.0, colorHex = "#B3001B", maskedNumber = "8899")
         )
-        // Ideally check exist before inserting
-        // accountDao.insert(accounts[1]) 
+        accounts.forEach { accountDao.insert(it) }
     }
     
     // Export Logic

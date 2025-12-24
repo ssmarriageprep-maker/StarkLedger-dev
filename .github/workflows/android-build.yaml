@@ -38,7 +38,20 @@ jobs:
       - name: Make Gradlew Executable
         run: chmod +x ./gradlew
 
-      # 5) Build Debug APK
+      # 5) Generate Release Keystore
+      - name: Generate Release Keystore
+        run: |
+          keytool -genkey -v \
+            -keystore app/release.keystore \
+            -alias release \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass password123 \
+            -keypass password123 \
+            -dname "CN=StarkLedger, OU=StarkLabs, O=StarkLabs, L=Unknown, S=Unknown, C=US"
+
+      # 6) Build Debug APK
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 

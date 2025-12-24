@@ -22,10 +22,10 @@ data class DashboardState(
 class DashboardViewModel(private val repository: MoneyRepository) : ViewModel() {
 
     // Seed defaults on init (simplified for this demo)
+    // Init block removed: Seeding is handled safely in Repository or should be triggered once by MainActivity if needed.
+    // For now, we rely on Repository's safe check if called elsewhere, or just don't call it here to avoid startup lag.
     init {
-        viewModelScope.launch {
-            repository.seedDefaults()
-        }
+        // No-op or remove completely. 
     }
 
     val uiState: StateFlow<DashboardState> = combine(

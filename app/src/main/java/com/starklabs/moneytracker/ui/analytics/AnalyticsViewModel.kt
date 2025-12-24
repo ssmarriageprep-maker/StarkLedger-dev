@@ -48,8 +48,7 @@ class AnalyticsViewModel(private val repository: MoneyRepository) : ViewModel() 
         }.sortedByDescending { it.value }.take(5) // Top 5
         
         // 2. Process Weekly Spending (Last 7 days approx)
-        // Mocking trend for visualization if empty
-        val trend = if (transactions.isEmpty()) listOf(0.2f, 0.4f, 0.3f, 0.8f, 0.5f, 0.9f, 0.6f) 
+        val trend = if (transactions.isEmpty()) emptyList() 
                    else transactions.take(7).map { (it.amount / 5000.0).toFloat().coerceIn(0f, 1f) }
 
         AnalyticsState(
