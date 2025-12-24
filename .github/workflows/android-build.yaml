@@ -42,9 +42,9 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      # 6) Build Release AAB (Unsigned)
-      - name: Build Release AAB
-        run: ./gradlew bundleRelease
+      # 6) Build Release APK (Signed with Debug Key)
+      - name: Build Release APK
+        run: ./gradlew assembleRelease
 
       # 7) Upload Debug APK as Artifact
       - name: Upload Debug APK
@@ -53,9 +53,9 @@ jobs:
           name: debug-apk
           path: app/build/outputs/apk/debug/*.apk
 
-      # 8) Upload Release AAB
-      - name: Upload Release AAB
+      # 8) Upload Release APK
+      - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: release-aab
-          path: app/build/outputs/bundle/release/*.aab
+          name: release-apk
+          path: app/build/outputs/apk/release/*.apk

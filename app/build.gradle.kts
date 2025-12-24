@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.starklabs.moneytracker"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.starklabs.moneytracker"
