@@ -124,7 +124,7 @@ data class CategorySpending(
 
 // ------------------- DATABASE -------------------
 
-@Database(entities = [Transaction::class, Account::class, Category::class], version = 3)
+@Database(entities = [Transaction::class, Account::class, Category::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun accountDao(): AccountDao

@@ -32,7 +32,7 @@ class MainActivity : AppCompatActivity() {
         val securityViewModelFactory = com.starklabs.moneytracker.ui.security.SecurityViewModelFactory(securityRepository)
         
         // Ensure database is seeded
-        androidx.lifecycle.lifecycleScope.launch {
+        lifecycleScope.launch {
             repository.seedDefaults()
         }
 
