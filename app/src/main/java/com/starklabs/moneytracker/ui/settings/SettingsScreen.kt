@@ -26,6 +26,26 @@ fun SettingsScreen(repository: MoneyRepository) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    // SAF Launcher for saving file
+    val saveLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/csv"),
+        onResult = { uri ->
+            uri?.let {
+                scope.launch {
+                    try {
+                        val csvData = repository.getExportDataCsv()
+                        context.contentResolver.openOutputStream(it)?.use { stream ->
+                            stream.write(csvData.toByteArray())
+                        }
+                        android.widget.Toast.makeText(context, "Export Saved Successfully", android.widget.Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                         android.widget.Toast.makeText(context, "Export Failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    )
+
     Box(modifier = Modifier.fillMaxSize().background(StarkBlack)) {
         Column(modifier = Modifier.padding(16.dp)) {
             NeonText(text = "SYSTEM CONFIG", style = MaterialTheme.typography.headlineMedium)
@@ -37,14 +57,26 @@ fun SettingsScreen(repository: MoneyRepository) {
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 HudButton(
-                    text = "EXPORT TO CSV", 
+                    text = "SAVE CSV LOCALLY", 
+                    onClick = {
+                        val fileName = "starkledger_export_${System.currentTimeMillis()}.csv"
+                        saveLauncher.launch(fileName)
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    color = NeonCyan
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+
+                HudButton(
+                    text = "SHARE CSV", 
                     onClick = {
                         scope.launch {
                             exportData(context, repository)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    color = NeonCyan
+                    color = NeonCyanDim
                 )
             }
         }

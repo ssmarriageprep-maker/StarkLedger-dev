@@ -52,12 +52,18 @@ object SmsParser {
         if (type == "UNKNOWN") return null
 
         var merchant = "Unknown Merchant"
-        val merchantPattern = Pattern.compile("(?i)(?:at|to|for)\\s+([A-Za-z0-9\\s]+?)(?:\\.|\\s|$)")
-        val merchantMatcher = merchantPattern.matcher(body)
-        if (merchantMatcher.find()) {
-            merchant = merchantMatcher.group(1)?.trim() ?: "Unknown"
+        // 1. UPI Payment to [Merchant]
+        val upiMatcher = Pattern.compile("(?i)(?:paid\\s+to|transfer\\s+to|sent\\s+to)\\s+([A-Za-z0-9\\s.]+?)(?:\\.|\\s|$)").matcher(body)
+        if (upiMatcher.find()) {
+            merchant = upiMatcher.group(1)?.trim()?.replace(Regex("(?i)(?:via|upi|ref|no).*"), "")?.trim() ?: "UPI Transfer"
         } else {
-             merchant = sender
+            // 2. Spent [Amount] at [Merchant]
+            val atMatcher = Pattern.compile("(?i)(?:at|to|on)\\s+([A-Za-z0-9\\s]+?)(?:\\.|\\s|via|on|ref|txn|$)").matcher(body)
+            if (atMatcher.find()) {
+                 merchant = atMatcher.group(1)?.trim() ?: "Unknown"
+            } else {
+                 merchant = sender.replace(Regex(".*-"), "") // Fallback to Sender ID suffix e.g. BZ-HDFCBK -> HDFCBK
+            }
         }
         
         // Extract Account Digits

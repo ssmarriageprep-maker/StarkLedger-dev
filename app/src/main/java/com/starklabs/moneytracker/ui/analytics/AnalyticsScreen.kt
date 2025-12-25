@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.starklabs.moneytracker.ui.components.GlassCard
 import com.starklabs.moneytracker.ui.components.NeonText
+import com.starklabs.moneytracker.ui.components.AnimatedDonutChart
 import com.starklabs.moneytracker.ui.theme.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -42,10 +43,15 @@ fun AnalyticsScreen(
              
              Spacer(modifier = Modifier.height(24.dp))
              
-             // Pie Chart Section
-             NeonText(text = "DISTRIBUTION", color = NeonCyan)
-             Box(modifier = Modifier.fillMaxWidth().height(200.dp), contentAlignment = Alignment.Center) {
-                 HolographicPieChart(slices = state.pieSlices, modifier = Modifier.size(180.dp))
+             // Donut Chart Section
+             NeonText(text = "SPENDING DISTRIBUTION", color = NeonCyan)
+             Box(modifier = Modifier.fillMaxWidth().height(250.dp), contentAlignment = Alignment.Center) {
+                 AnimatedDonutChart(slices = state.pieSlices, modifier = Modifier.size(200.dp))
+                 // Center Text
+                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                     NeonText(text = "TOTAL", color = TextGrey, style = MaterialTheme.typography.labelSmall)
+                     NeonText(text = "₹${state.totalExpense.toInt()}", color = TextWhite, style = MaterialTheme.typography.titleLarge)
+                 }
              }
              
              Spacer(modifier = Modifier.height(24.dp))
@@ -168,23 +174,7 @@ fun IncomeExpenseChart(income: Double, expense: Double) {
     }
 }
 
-@Composable
-fun HolographicPieChart(slices: List<Slice>, modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        var startAngle = -90f
-        slices.forEach { slice ->
-            val sweepAngle = slice.value * 360f
-            drawArc(
-                color = slice.color,
-                startAngle = startAngle,
-                sweepAngle = sweepAngle - 2f, // Gap
-                useCenter = false,
-                style = Stroke(width = 20.dp.toPx(), cap = StrokeCap.Butt)
-            )
-            startAngle += sweepAngle
-        }
-    }
-}
+
 
 @Composable
 fun GlowingLineChart(data: List<Float>, modifier: Modifier = Modifier) {

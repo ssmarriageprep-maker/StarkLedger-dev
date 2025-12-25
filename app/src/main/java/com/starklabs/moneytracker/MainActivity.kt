@@ -57,6 +57,9 @@ class MainActivity : AppCompatActivity() {
                         val viewModel: com.starklabs.moneytracker.ui.analytics.AnalyticsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
                         com.starklabs.moneytracker.ui.analytics.AnalyticsScreen(navController, viewModel)
                     }
+                    composable(Screen.AddAccount.route) {
+                        com.starklabs.moneytracker.ui.wallets.AddAccountScreen(navController, repository)
+                    }
                     composable(Screen.Wallets.route) {
                          val factory = com.starklabs.moneytracker.ui.wallets.WalletsViewModelFactory(repository)
                          val viewModel: com.starklabs.moneytracker.ui.wallets.WalletsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)

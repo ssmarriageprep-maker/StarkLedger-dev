@@ -9,6 +9,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
@@ -79,6 +80,44 @@ fun HudButton(
     ) {
         Text(text = text.uppercase(), color = color, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
     }
+}
+
+@Composable
+fun NeonButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    color: Color = NeonCyan
+) {
+    HudButton(text = text, onClick = onClick, modifier = modifier, color = color)
+}
+
+@Composable
+fun NeonTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default
+) {
+    androidx.compose.material3.OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label, color = NeonCyanDim) },
+        modifier = modifier,
+        textStyle = androidx.compose.ui.text.TextStyle(color = TextWhite),
+        colors = androidx.compose.material3.TextFieldDefaults.colors(
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent,
+            focusedIndicatorColor = NeonCyan,
+            unfocusedIndicatorColor = NeonCyanDim,
+            cursorColor = NeonCyan,
+            focusedLabelColor = NeonCyan,
+            unfocusedLabelColor = NeonCyanDim
+        ),
+        keyboardOptions = keyboardOptions,
+        shape = CutCornerShape(8.dp)
+    )
 }
 
 @Composable

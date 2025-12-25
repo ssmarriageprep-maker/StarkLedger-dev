@@ -83,9 +83,7 @@ class MoneyRepository(
         // Similarly for accounts, check if any exist
         if (accountDao.getAllAccounts().firstOrNull().isNullOrEmpty()) {
             val accounts = listOf(
-                 Account(name = "Cash", type = "CASH", balance = 500.0, colorHex = "#00B0FF", maskedNumber = null),
-                 Account(name = "HDFC Bank", type = "BANK", balance = 150000.0, colorHex = "#FFD700", maskedNumber = "1234"),
-                 Account(name = "SBI Credit", type = "CREDIT_CARD", balance = -20000.0, colorHex = "#B3001B", maskedNumber = "8899")
+                 Account(name = "Cash", type = "CASH", balance = 0.0, colorHex = "#00B0FF", maskedNumber = null)
             )
             accounts.forEach { accountDao.insert(it) }
         }
