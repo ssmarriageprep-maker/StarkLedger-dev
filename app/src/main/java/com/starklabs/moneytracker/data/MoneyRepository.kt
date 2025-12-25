@@ -68,28 +68,27 @@ class MoneyRepository(
     }
     
     suspend fun seedDefaults() {
-        if (categoryDao.getAllCategoriesOneShot().isNotEmpty()) {
-            return
+        if (categoryDao.getAllCategoriesOneShot().isEmpty()) {
+            val categories = listOf(
+                Category(name = "Food", iconName = "restaurant", budgetLimit = 5000.0, colorHex = "#FFD700", keywords = "swiggy,zomato,mcdonalds,starbucks,cafe"),
+                Category(name = "Rent", iconName = "home", budgetLimit = 15000.0, colorHex = "#00B0FF", keywords = "rent,landlord,housing"),
+                Category(name = "Travel", iconName = "commute", budgetLimit = 3000.0, colorHex = "#FF6D00", keywords = "uber,ola,train,flight,fuel,petrol"),
+                Category(name = "Shopping", iconName = "shopping_bag", budgetLimit = 5000.0, colorHex = "#B3001B", keywords = "amazon,flipkart,myntra,mall"),
+                Category(name = "Bills", iconName = "receipt", budgetLimit = 2000.0, colorHex = "#00E6FF", keywords = "electricity,water,gas,broadband,mobile")
+            )
+            categoryDao.insertAll(categories)
         }
-
-        val categories = listOf(
-            Category(name = "Food", iconName = "restaurant", budgetLimit = 5000.0, colorHex = "#FFD700", keywords = "swiggy,zomato,mcdonalds,starbucks,cafe"),
-            Category(name = "Rent", iconName = "home", budgetLimit = 15000.0, colorHex = "#00B0FF", keywords = "rent,landlord,housing"),
-            Category(name = "Travel", iconName = "commute", budgetLimit = 3000.0, colorHex = "#FF6D00", keywords = "uber,ola,train,flight,fuel,petrol"),
-            Category(name = "Shopping", iconName = "shopping_bag", budgetLimit = 5000.0, colorHex = "#B3001B", keywords = "amazon,flipkart,myntra,mall"),
-            Category(name = "Bills", iconName = "receipt", budgetLimit = 2000.0, colorHex = "#00E6FF", keywords = "electricity,water,gas,broadband,mobile")
-        )
-        categoryDao.insertAll(categories)
         
         // Similarly for accounts, check if any exist
-        if (accountDao.getAllAccounts().firstOrNull()?.isNotEmpty() == true) return
-
-        val accounts = listOf(
-             Account(name = "Cash", type = "CASH", balance = 500.0, colorHex = "#00B0FF", maskedNumber = null),
-             Account(name = "HDFC Bank", type = "BANK", balance = 150000.0, colorHex = "#FFD700", maskedNumber = "1234"),
-             Account(name = "SBI Credit", type = "CREDIT_CARD", balance = -20000.0, colorHex = "#B3001B", maskedNumber = "8899")
-        )
-        accounts.forEach { accountDao.insert(it) }
+        // Similarly for accounts, check if any exist
+        if (accountDao.getAllAccounts().firstOrNull().isNullOrEmpty()) {
+            val accounts = listOf(
+                 Account(name = "Cash", type = "CASH", balance = 500.0, colorHex = "#00B0FF", maskedNumber = null),
+                 Account(name = "HDFC Bank", type = "BANK", balance = 150000.0, colorHex = "#FFD700", maskedNumber = "1234"),
+                 Account(name = "SBI Credit", type = "CREDIT_CARD", balance = -20000.0, colorHex = "#B3001B", maskedNumber = "8899")
+            )
+            accounts.forEach { accountDao.insert(it) }
+        }
     }
     
     // Export Logic

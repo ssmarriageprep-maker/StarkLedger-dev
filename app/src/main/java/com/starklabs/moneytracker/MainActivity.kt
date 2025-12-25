@@ -13,6 +13,8 @@ import com.starklabs.moneytracker.ui.home.DashboardScreen
 import com.starklabs.moneytracker.ui.home.DashboardViewModel
 import com.starklabs.moneytracker.ui.home.DashboardViewModelFactory
 import com.starklabs.moneytracker.ui.theme.StarkLedgerTheme
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,6 +30,11 @@ class MainActivity : AppCompatActivity() {
         
         val dashboardViewModelFactory = DashboardViewModelFactory(repository)
         val securityViewModelFactory = com.starklabs.moneytracker.ui.security.SecurityViewModelFactory(securityRepository)
+        
+        // Ensure database is seeded
+        androidx.lifecycle.lifecycleScope.launch {
+            repository.seedDefaults()
+        }
 
         setContent {
             StarkLedgerTheme {
