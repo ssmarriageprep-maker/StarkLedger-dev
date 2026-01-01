@@ -15,12 +15,13 @@ data class ParsedSms(
 
 object SmsParser {
 
-    // Matches strings like "Rs. 1,234.50", "INR 1234", "Rs 1234"
-    // specificially looking for money formats
-    private val AMOUNT_PATTERN = Pattern.compile("(?i)(?:Rs\\.?|INR)\\s*(\\d+(?:,\\d+)*(?:\\.\\d{1,2})?)")
+    private const val CURRENCY_REGEX = "(?i)(?:Rs\\.?|INR|₹|\\u20B9)"
     
-    // Matches "Avl Bal Rs 1234", "Balance Rs 1234", "Bal: Rs 1234"
-    private val BALANCE_PATTERN = Pattern.compile("(?i)(?:Avl|Avail|Available)?\\.?\\s*Bal(?:ance)?\\.?\\s*(?:is|:)?\\s*(?:Rs\\.?|INR)?\\s*([\\d,]+\\.?\\d{0,2})")
+    // Matches strings like "Rs. 1,234.50", "INR 1234", "₹ 1234"
+    private val AMOUNT_PATTERN = Pattern.compile("$CURRENCY_REGEX\\s*(\\d+(?:,\\d+)*(?:\\.\\d{1,2})?)")
+    
+    // Matches "Avl Bal Rs 1234", "Balance ₹ 1234", "Bal: 1234"
+    private val BALANCE_PATTERN = Pattern.compile("(?i)(?:Avl|Avail|Available)?\\.?\\s*Bal(?:ance)?\\.?\\s*(?:is|:)?\\s*(?:$CURRENCY_REGEX)?\\s*([\\d,]+\\.?\\d{0,2})")
 
     private val DEBIT_KEYWORDS = listOf("debited", "spent", "paid", "sent", "withdrawal", "purchase", "charged", "used at", "txn")
     private val CREDIT_KEYWORDS = listOf("credited", "received", "deposited", "added", "refund", "salary", "inward")
@@ -59,17 +60,21 @@ object SmsParser {
         if (type == "UNKNOWN") return null
 
         var merchant = "Unknown Merchant"
-        // 1. UPI Payment to [Merchant]
-        val upiMatcher = Pattern.compile("(?i)(?:paid\\s+to|transfer\\s+to|sent\\s+to)\\s+([A-Za-z0-9\\s.]+?)(?:\\.|\\s|$)").matcher(body)
-        if (upiMatcher.find()) {
-            merchant = upiMatcher.group(1)?.trim()?.replace(Regex("(?i)(?:via|upi|ref|no).*"), "")?.trim() ?: "UPI Transfer"
+        
+        // Strategy 1: "Paid to [Merchant]", "Transfer to [Merchant]", "Sent to [Merchant]"
+        val paidToMatcher = Pattern.compile("(?i)(?:paid\\s+to|transfer\\s+to|sent\\s+to)\\s+([A-Za-z0-9\\s.]+?)(?:\\.|\\s|$)").matcher(body)
+        if (paidToMatcher.find()) {
+            merchant = paidToMatcher.group(1)?.trim()?.replace(Regex("(?i)(?:via|upi|ref|no).*"), "")?.trim() ?: "UPI Transfer"
         } else {
-            // 2. Spent [Amount] at [Merchant]
-            val atMatcher = Pattern.compile("(?i)(?:at|to|on)\\s+([A-Za-z0-9\\s]+?)(?:\\.|\\s|via|on|ref|txn|$)").matcher(body)
-            if (atMatcher.find()) {
-                 merchant = atMatcher.group(1)?.trim() ?: "Unknown"
+            // Strategy 2: "Spent [Amount] at [Merchant]", "Debited for [Merchant]", "Purchase at [Merchant]"
+            // We look for 'at' or 'for' followed by the merchant name
+            val atForMatcher = Pattern.compile("(?i)(?:at|for)\\s+([A-Za-z0-9\\s]+?)(?:\\.|\\s|via|on|ref|txn|$)").matcher(body)
+            if (atForMatcher.find()) {
+                 merchant = atForMatcher.group(1)?.trim() ?: "Unknown"
             } else {
-                 merchant = sender.replace(Regex(".*-"), "") // Fallback to Sender ID suffix e.g. BZ-HDFCBK -> HDFCBK
+                // Strategy 3: Fallback to sender suffix
+                // Example: AD-HDFCBK -> HDFCBK, JM-ZOMATO -> ZOMATO
+                 merchant = sender.replace(Regex(".*-"), "") 
             }
         }
         
