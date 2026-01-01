@@ -16,13 +16,21 @@ class MoneyRepository(
     val totalSpent: Flow<Double?> = transactionDao.getTotalSpent()
     val totalIncome: Flow<Double?> = transactionDao.getTotalIncome()
 
-    suspend fun addTransaction(transaction: Transaction) {
+    suspend fun addTransaction(transaction: Transaction, smsBalance: Double? = null) {
         transactionDao.insert(transaction)
         // Update account balance
-        if (transaction.type == "DEBIT") {
-            accountDao.deductBalance(transaction.accountId, transaction.amount)
+        if (smsBalance != null) {
+            val account = accountDao.getAccountById(transaction.accountId)
+            if (account != null) {
+                // Trust the SMS balance as the source of truth
+                accountDao.update(account.copy(balance = smsBalance))
+            }
         } else {
-            accountDao.addBalance(transaction.accountId, transaction.amount)
+            if (transaction.type == "DEBIT") {
+                accountDao.deductBalance(transaction.accountId, transaction.amount)
+            } else {
+                accountDao.addBalance(transaction.accountId, transaction.amount)
+            }
         }
     }
     
