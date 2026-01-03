@@ -40,7 +40,9 @@ object SmsParser {
         "bill due", "bill payment reminder", "thank you for making payment of bill",
         "statement generated", "minimum due", "due date",
         "otp", "verification code", "promo", "cashback offer",
-        "loan offer", "credit limit", "emi offer"
+        "loan offer", "credit limit", "emi offer", "topup", "recharged",
+        "plan", "pack", "internet", "expiry", "unlimited", "subscription",
+        "bonus", "gift", "limited time", "mobile", "landline", "broadband", "utility"
     )
 
     // ✅ TRANSACTION INDICATORS - Need at least 2 for valid transaction
@@ -58,7 +60,8 @@ object SmsParser {
     private val BANK_PATTERN = Pattern.compile("(?i)(HDFC|SBI|ICICI|AXIS|KOTAK|PNB|YES BANK|IDFC|FEDERAL|CANARA|BANK OF BARODA|UNION BANK)")
     
     // 🔢 Account number extraction (masked format only)
-    private val ACCOUNT_PATTERN = Pattern.compile("(?i)(?:a/c|acct|account|card)\\s*(?:no\\.?)?\\s*[:\\-]?\\s*(?:XX|\\*)*([0-9]{3,4})")
+    // Refined to ensure it matches exactly 3-4 digits and is not the start of a longer mobile number
+    private val ACCOUNT_PATTERN = Pattern.compile("(?i)(?:a/c|acct|account|card)\\s*(?:no\\.?)?\\s*[:\\-]?\\s*(?:XX|\\*)*([0-9]{3,4})(?!\\d)")
     
     // 🧾 Merchant extraction
     private val MERCHANT_PATTERN = Pattern.compile("(?i)(?:to|paid to|transferred to|at)\\s+([A-Za-z0-9\\s.&]+?)(?:\\s+(?:via|on|ref|upi|a/c|Rs|INR|₹)|\\.|$)")

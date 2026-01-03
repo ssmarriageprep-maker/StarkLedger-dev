@@ -58,9 +58,10 @@ class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
                 "date DESC LIMIT 500" // Scan last 500 messages
             )
 
-            val foundAccounts = mutableMapOf<String, Double?>() // Map of last4 -> latest balance
+            val sessionAccounts = mutableMapOf<String, Int>() // last4 -> id
             var transactionsCreated = 0
             var messagesRejected = 0
+            var newAccountsCreated = 0
             
             cursor?.use {
                 val addressIdx = it.getColumnIndex("address")
@@ -68,42 +69,39 @@ class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
                 val dateIdx = it.getColumnIndex("date")
                 
                 while (it.moveToNext()) {
-                    val sender = it.getString(addressIdx) ?: "Unknown"
-                    val body = it.getString(bodyIdx) ?: continue
-                    val timestamp = it.getLong(dateIdx)
-                    
-                    // Use the new SmsParser to parse each SMS
-                    val parsed = com.starklabs.moneytracker.domain.SmsParser.parseSms(sender, body, timestamp)
-                    
-                    if (parsed.isTransaction) {
-                        // Valid transaction found
-                        val accountLast4 = parsed.accountLast4
+                    try {
+                        val sender = it.getString(addressIdx) ?: "Unknown"
+                        val body = it.getString(bodyIdx) ?: continue
+                        val timestamp = it.getLong(dateIdx)
                         
-                        if (accountLast4 != null) {
-                            // Track this account
-                            if (!foundAccounts.containsKey(accountLast4)) {
-                                foundAccounts[accountLast4] = parsed.balance
+                        val parsed = com.starklabs.moneytracker.domain.SmsParser.parseSms(sender, body, timestamp)
+                        
+                        if (parsed.isTransaction && parsed.accountLast4 != null) {
+                            val last4 = parsed.accountLast4!!
+                            
+                            // Get or create account ID
+                            var accountId = sessionAccounts[last4]
+                            if (accountId == null) {
+                                val existingAccount = repository.findAccountForSms(last4)
+                                if (existingAccount != null) {
+                                    accountId = existingAccount.id
+                                } else {
+                                    val bankName = parsed.bank ?: "Bank"
+                                    val newAccount = Account(
+                                        name = "$bankName - $last4",
+                                        type = "BANK",
+                                        balance = parsed.balance ?: 0.0,
+                                        maskedNumber = last4,
+                                        colorHex = "#FFD700"
+                                    )
+                                    val id = repository.addAccount(newAccount)
+                                    accountId = id.toInt()
+                                    newAccountsCreated++
+                                }
+                                sessionAccounts[last4] = accountId
                             }
                             
-                            // Check if account exists
-                            val existingAccount = repository.findAccountForSms(accountLast4)
-                            val accountId = if (existingAccount != null) {
-                                existingAccount.id
-                            } else {
-                                // Create new account
-                                val bankName = parsed.bank ?: "Bank"
-                                val newAccount = Account(
-                                    name = "$bankName - $accountLast4",
-                                    type = "BANK",
-                                    balance = parsed.balance ?: 0.0, // Use SMS balance if available
-                                    maskedNumber = accountLast4,
-                                    colorHex = "#FFD700" // Gold
-                                )
-                                val id = repository.addAccount(newAccount)
-                                id.toInt()
-                            }
-                            
-                            // Create transaction
+                            // Add transaction
                             val amount = parsed.amount ?: 0.0
                             if (amount > 0.0) {
                                 val merchant = parsed.merchant ?: "Unknown Merchant"
@@ -114,30 +112,29 @@ class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
                                     merchant = merchant,
                                     date = timestamp,
                                     type = transactionType,
-                                    smsBody = parsed.rawMessage,
+                                    smsBody = body,
                                     accountId = accountId,
-                                    categoryId = repository.identifyCategory(merchant, parsed.rawMessage)
+                                    categoryId = repository.identifyCategory(merchant, body)
                                 )
                                 
-                                // Add transaction and update balance
                                 repository.addTransaction(transaction, parsed.balance)
                                 transactionsCreated++
                             }
+                        } else {
+                            messagesRejected++
                         }
-                    } else {
-                        messagesRejected++
+                    } catch (e: Exception) {
+                        android.util.Log.e("WalletsScan", "Error processing message", e)
                     }
                 }
             }
             
             withContext(Dispatchers.Main) {
-                val message = buildString {
-                    append("Scan Complete!\n")
-                    append("✅ ${foundAccounts.size} accounts found\n")
-                    append("✅ $transactionsCreated transactions created\n")
-                    append("❌ $messagesRejected messages rejected")
-                }
-                Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+                val summary = "Scan Complete!\n" +
+                    "• Accounts Added: $newAccountsCreated\n" +
+                    "• Transactions Created: $transactionsCreated\n" +
+                    "• Messages Filtered: $messagesRejected"
+                Toast.makeText(context, summary, Toast.LENGTH_LONG).show()
             }
         }
     }

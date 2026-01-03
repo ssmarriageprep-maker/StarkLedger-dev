@@ -331,12 +331,21 @@ class SmsParserTest {
     }
 
     @Test
-    fun `ignore non-rupee numbers like data amounts`() {
-        val body = "Get 2GB/day data with unlimited calls. Valid for 28 days at Rs 299"
-        val result = SmsParser.parseSms("AIRTEL", body, 123456789L)
+    fun `reject message where account is actually a mobile number`() {
+        val body = "Recharge of Rs.318 done for account 9606881234. Your plan is valid till 28-Feb."
+        val result = SmsParser.parseSms("AD-RECHRG", body, 123456789L)
         
-        // Should be rejected due to promotional keywords, not amount confusion
-        assertFalse(result.isTransaction)
+        assertFalse("Should reject recharge/mobile number", result.isTransaction)
+        // reason should contain promotional keywords or not be a valid transaction
+    }
+
+    @Test
+    fun `extract account number exactly 4 digits without trailing digits`() {
+        val body = "Rs 100 debited from A/C 1234 via UPI. Ref 1234567890"
+        val result = SmsParser.parseSms("BANK", body, 123456789L)
+        
+        assertTrue(result.isTransaction)
+        assertEquals("1234", result.accountLast4)
     }
 
     // ========================================

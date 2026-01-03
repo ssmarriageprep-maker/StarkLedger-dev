@@ -62,7 +62,7 @@ interface AccountDao {
     suspend fun getAccountByMaskedNumber(last4: String): Account?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(account: Account)
+    suspend fun insert(account: Account): Long
 
     @Update
     suspend fun update(account: Account)
@@ -83,7 +83,7 @@ interface CategoryDao {
     suspend fun getAllCategoriesOneShot(): List<Category>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(category: Category)
+    suspend fun insert(category: Category): Long
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(categories: List<Category>)
