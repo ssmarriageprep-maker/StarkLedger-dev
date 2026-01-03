@@ -38,20 +38,31 @@ class SmsReceiver : BroadcastReceiver() {
                         Log.d("SmsReceiver", "Received SMS from $sender: $body")
 
                         val parsed = SmsParser.parseSms(sender, body, timestamp)
-                        if (parsed != null) {
+                        
+                        // Check if it's a valid transaction
+                        if (parsed.isTransaction) {
+                            // All required fields are guaranteed to be non-null when isTransaction = true
+                            val amount = parsed.amount ?: run {
+                                Log.w("SmsReceiver", "Transaction marked valid but amount is null")
+                                return@forEach
+                            }
+                            
+                            val merchant = parsed.merchant ?: "Unknown Merchant"
+                            val transactionType = parsed.transactionType?.uppercase() ?: "DEBIT"
+                            
                             // 1. Find Account
                             val matchedAccount = repository.findAccountForSms(parsed.accountLast4)
                             val accountId = matchedAccount?.id ?: repository.getDefaultAccount()?.id ?: 1 // Fallback
 
                             // 2. Find Category
-                            val categoryId = repository.identifyCategory(parsed.merchant, parsed.smsBody)
+                            val categoryId = repository.identifyCategory(merchant, parsed.rawMessage)
 
                             val transaction = Transaction(
-                                amount = parsed.amount,
-                                merchant = parsed.merchant,
-                                date = parsed.date,
-                                type = parsed.type,
-                                smsBody = parsed.smsBody,
+                                amount = amount,
+                                merchant = merchant,
+                                date = timestamp, // Use the SMS timestamp
+                                type = transactionType, // "DEBIT" or "CREDIT"
+                                smsBody = parsed.rawMessage,
                                 accountId = accountId,
                                 categoryId = categoryId
                             )
@@ -61,6 +72,8 @@ class SmsReceiver : BroadcastReceiver() {
                             Log.d("SmsReceiver", "Inserted Transaction: $transaction with balance: $balanceToUpdate")
 
                             repository.addTransaction(transaction, balanceToUpdate)
+                        } else {
+                            Log.d("SmsReceiver", "SMS rejected: ${parsed.reason}")
                         }
                     }
                 } catch (e: Exception) {
