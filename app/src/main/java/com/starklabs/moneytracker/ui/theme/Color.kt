@@ -27,3 +27,19 @@ val ChartYellow = Color(0xFFFFC400)
 val ChartOrange = Color(0xFFFF6D00)
 val ChartPurple = Color(0xFF651FFF)
 val ChartRed = Color(0xFFD50000)
+
+// Compatibility Layer (Legacy Stark Colors)
+val NeonCyan = AccentCyan
+val JarvisGold = AccentGold
+val JarvisOrange = ChartOrange
+val TextGrey = TextSecondary
+val TextWhite = TextPrimary
+val HotRed = ExpenseRed
+
+// Restored specific missing values
+val NeonCyanDim = Color(0xFF005A82)
+val MetallicRed = Color(0xFFB3001B)
+val MetallicGold = Color(0xFFD4AF37)
+val TextCyan = Color(0xFFE0F7FA)
+val ArcReactorBlue = Color(0xFF00B0FF)
+val ElectricBlue = Color(0xFF2979FF)
