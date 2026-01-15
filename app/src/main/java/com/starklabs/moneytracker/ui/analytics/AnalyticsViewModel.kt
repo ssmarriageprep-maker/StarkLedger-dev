@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.starklabs.moneytracker.data.MoneyRepository
 import com.starklabs.moneytracker.data.Transaction
-import com.starklabs.moneytracker.ui.theme.*
+import com.starklabs.moneytracker.ui.theme.NeonCyan
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine

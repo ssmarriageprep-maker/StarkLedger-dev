@@ -27,7 +27,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.starklabs.moneytracker.ui.theme.*
+import com.starklabs.moneytracker.ui.theme.NeonCyan
+import com.starklabs.moneytracker.ui.theme.NeonCyanDim
+import com.starklabs.moneytracker.ui.theme.StarkSurface
+import com.starklabs.moneytracker.ui.theme.TextWhite
 
 @Composable
 fun GlassCard(

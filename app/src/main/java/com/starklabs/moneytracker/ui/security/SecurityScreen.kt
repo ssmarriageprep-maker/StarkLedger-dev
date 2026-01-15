@@ -12,7 +12,10 @@ import com.starklabs.moneytracker.ui.Screen
 import com.starklabs.moneytracker.ui.add.Keypad
 import com.starklabs.moneytracker.ui.components.ArcReactor
 import com.starklabs.moneytracker.ui.components.NeonText
-import com.starklabs.moneytracker.ui.theme.*
+import com.starklabs.moneytracker.ui.theme.NeonCyan
+import com.starklabs.moneytracker.ui.theme.MetallicRed
+import com.starklabs.moneytracker.ui.theme.StarkBlack
+import com.starklabs.moneytracker.ui.theme.StarkSurface
 
 @Composable
 fun SecurityScreen(navController: NavController, viewModel: SecurityViewModel) {

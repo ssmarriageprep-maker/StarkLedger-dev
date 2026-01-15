@@ -9,6 +9,7 @@ import com.starklabs.moneytracker.data.AppDatabase
 import com.starklabs.moneytracker.data.MoneyRepository
 import com.starklabs.moneytracker.data.Transaction
 import com.starklabs.moneytracker.domain.SmsParser
+import com.starklabs.moneytracker.domain.ParsedSms
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -67,9 +68,9 @@ class SmsReceiver : BroadcastReceiver() {
                                 categoryId = categoryId
                             )
 
-                            // Only update balance if we are sure about the account
-                            val balanceToUpdate = if (matchedAccount != null) parsed.balance else null
-                            Log.d("SmsReceiver", "Inserted Transaction: $transaction with balance: $balanceToUpdate")
+                            // Balance is not extracted in strict mode
+                            val balanceToUpdate: Double? = null 
+                            Log.d("SmsReceiver", "Inserted Transaction: $transaction")
 
                             repository.addTransaction(transaction, balanceToUpdate)
                         } else {

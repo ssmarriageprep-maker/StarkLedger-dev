@@ -19,7 +19,8 @@ import com.starklabs.moneytracker.data.MoneyRepository
 import com.starklabs.moneytracker.ui.components.NeonButton
 import com.starklabs.moneytracker.ui.components.NeonTextField
 import com.starklabs.moneytracker.ui.components.NeonText
-import com.starklabs.moneytracker.ui.theme.*
+import com.starklabs.moneytracker.ui.theme.NeonCyan
+import com.starklabs.moneytracker.ui.theme.StarkBlack
 import kotlinx.coroutines.launch
 
 @Composable

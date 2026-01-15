@@ -18,7 +18,13 @@ import androidx.navigation.NavController
 import com.starklabs.moneytracker.ui.components.GlassCard
 import com.starklabs.moneytracker.ui.components.NeonText
 import com.starklabs.moneytracker.ui.components.AnimatedDonutChart
-import com.starklabs.moneytracker.ui.theme.*
+import com.starklabs.moneytracker.ui.theme.JarvisGold
+import com.starklabs.moneytracker.ui.theme.NeonCyan
+import com.starklabs.moneytracker.ui.theme.TextGrey
+import com.starklabs.moneytracker.ui.theme.TextWhite
+import com.starklabs.moneytracker.ui.theme.MetallicRed
+import com.starklabs.moneytracker.ui.theme.StarkBlack
+import com.starklabs.moneytracker.ui.theme.StarkSurface
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 
