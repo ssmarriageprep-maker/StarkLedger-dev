@@ -6,8 +6,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.sharp.Add
+import androidx.compose.material.icons.sharp.History
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -131,7 +131,7 @@ fun DashboardScreen(
                  containerColor = NeonCyan,
                  contentColor = StarkBlack
              ) {
-                 Icon(Icons.Default.Add, contentDescription = "Add")
+                 Icon(Icons.Sharp.Add, contentDescription = "Add")
              }
         }
     }

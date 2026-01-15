@@ -4,8 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.sharp.ArrowBack
+import androidx.compose.material.icons.sharp.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -48,7 +48,7 @@ fun AddAccountScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = NeonCyan)
+                    Icon(Icons.Sharp.ArrowBack, contentDescription = "Back", tint = NeonCyan)
                 }
                 NeonText("NEW ACCOUNT", style = MaterialTheme.typography.headlineMedium)
             }

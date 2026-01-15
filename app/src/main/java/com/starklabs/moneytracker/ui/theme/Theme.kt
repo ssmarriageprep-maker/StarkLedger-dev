@@ -10,29 +10,30 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
-    primary = NeonCyan,
-    secondary = JarvisGold,
-    tertiary = MetallicRed,
-    background = StarkBlack,
+    primary = AccentCyan,
+    secondary = AccentGold,
+    background = StarkBackground,
     surface = StarkSurface,
     onPrimary = StarkBlack,
     onSecondary = StarkBlack,
-    onTertiary = StarkBlack,
-    onBackground = TextWhite,
-    onSurface = TextWhite,
+    onBackground = TextPrimary,
+    onSurface = TextPrimary,
+    error = ExpenseRed
 )
 
 @Composable
 fun StarkLedgerTheme(
     content: @Composable () -> Unit
 ) {
-    val colorScheme = DarkColorScheme // Always Dark
+    val colorScheme = DarkColorScheme // Enforce dark theme
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = StarkBlack.toArgb() // Black Status Bar
+            window.statusBarColor = StarkBackground.toArgb()
+            window.navigationBarColor = StarkBackground.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
         }
     }
 
