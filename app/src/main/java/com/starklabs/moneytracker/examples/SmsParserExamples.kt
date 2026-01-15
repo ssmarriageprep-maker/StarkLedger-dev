@@ -120,7 +120,7 @@ object SmsParserExamples {
             result.merchant?.let { println("   Merchant: $it") }
             result.date?.let { println("   Date: $it") }
             result.reference?.let { println("   Reference: $it") }
-            result.balance?.let { println("   Balance: ${result.currency} $it") }
+            result.reference?.let { println("   Reference: $it") }
         } else {
             println("❌ REJECTED")
             println("   Reason: ${result.reason}")

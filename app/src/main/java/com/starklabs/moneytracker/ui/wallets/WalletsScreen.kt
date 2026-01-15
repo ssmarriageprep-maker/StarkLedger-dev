@@ -94,7 +94,7 @@ class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
                                     val newAccount = Account(
                                         name = "$bankName - $last4",
                                         type = "BANK",
-                                        balance = parsed.balance ?: 0.0,
+                                        balance = 0.0, // Default initialization
                                         maskedNumber = last4,
                                         colorHex = "#FFD700"
                                     )
@@ -121,7 +121,7 @@ class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
                                     categoryId = repository.identifyCategory(merchant, body)
                                 )
                                 
-                                repository.addTransaction(transaction, parsed.balance)
+                                repository.addTransaction(transaction)
                                 transactionsCreated++
                             }
                         } else {
