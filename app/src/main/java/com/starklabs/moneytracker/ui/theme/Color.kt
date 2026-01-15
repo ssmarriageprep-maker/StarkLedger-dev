@@ -1,35 +1,29 @@
 package com.starklabs.moneytracker.ui.theme
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Brush
 
-val StarkBlack = Color(0xFF000000)
-val StarkDarkGrey = Color(0xFF121212)
-val StarkSurface = Color(0xFF1E1E1E)
+// Primary Palette (Dark, Stark-Inspired)
+val StarkBlack = Color(0xFF0A0A0A) // Slightly off-black for depth
+val StarkSurface = Color(0xFF1A1D2E) // Deep navy blue surface
+val StarkBackground = Color(0xFF101220) // Dark blue-grey background
 
-// Neon Accents
-val NeonCyan = Color(0xFF00E6FF)
-val NeonCyanDim = Color(0xFF005A82)
-val ArcReactorBlue = Color(0xFF00B0FF)
-val ElectricBlue = Color(0xFF2979FF)
+// Functional Colors
+val InfoBlue = Color(0xFF00B0FF)     // Cyan/Blue for informational, neutral (Arc Reactor Blue)
+val IncomeGreen = Color(0xFF00C853)   // Green for income, savings, healthy spend
+val WarningAmber = Color(0xFFFFAB00)  // Amber for warnings, nearing budget
+val ExpenseRed = Color(0xFFFF1744)   // Red for overspending, alerts (HotRed)
 
-// Metallic Accents
-val MetallicRed = Color(0xFFB3001B)
-val HotRed = Color(0xFFFF1744)
-val JarvisGold = Color(0xFFFFB400)
-val JarvisOrange = Color(0xFFFF6D00)
-val MetallicGold = Color(0xFFD4AF37)
+// Accent & Text Colors
+val AccentCyan = Color(0xFF00E5FF)    // Bright cyan for highlights, FABs
+val AccentGold = Color(0xFFFFD600)    // Gold for secondary accents, premium feel
+val TextPrimary = Color(0xFFFFFFFF)   // Pure white for primary text
+val TextSecondary = Color(0xFFB0B0B0) // Light grey for secondary text, hints
+val TextDisabled = Color(0xFF757575) // Disabled text color
 
-// Text
-val TextWhite = Color(0xFFFFFFFF)
-val TextGrey = Color(0xFFB0B0B0)
-val TextCyan = Color(0xFFE0F7FA)
-
-// Gradients
-val BrushArcReactor = Brush.radialGradient(
-    colors = listOf(Color.White, NeonCyan, ArcReactorBlue, Color.Transparent)
-)
-
-val BrushMetallicGold = Brush.horizontalGradient(
-    colors = listOf(JarvisGold, MetallicGold, JarvisOrange)
-)
+// Chart Colors (Professional & Clear)
+val ChartBlue = Color(0xFF2962FF)
+val ChartGreen = Color(0xFF00BFA5)
+val ChartYellow = Color(0xFFFFC400)
+val ChartOrange = Color(0xFFFF6D00)
+val ChartPurple = Color(0xFF651FFF)
+val ChartRed = Color(0xFFD50000)

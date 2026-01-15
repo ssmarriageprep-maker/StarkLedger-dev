@@ -8,13 +8,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.QrCode
-import androidx.compose.material.icons.filled.Message
+import androidx.compose.material.icons.sharp.Add
+import androidx.compose.material.icons.sharp.ArrowBack
+import androidx.compose.material.icons.sharp.CreditCard
+import androidx.compose.material.icons.sharp.AccountBalanceWallet
+import androidx.compose.material.icons.sharp.AccountBalance
+import androidx.compose.material.icons.sharp.QrCode
+import androidx.compose.material.icons.sharp.Message
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -173,7 +173,7 @@ fun WalletsScreen(
                 containerColor = NeonCyan,
                 contentColor = StarkBlack
             ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Account")
+                Icon(Icons.Sharp.Add, contentDescription = "Add Account")
             }
         }
     ) { padding ->
@@ -189,7 +189,7 @@ fun WalletsScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = NeonCyan)
+                    Icon(Icons.Sharp.ArrowBack, contentDescription = "Back", tint = NeonCyan)
                 }
                 NeonText(text = "ACCOUNTS", style = MaterialTheme.typography.headlineMedium)
                 Spacer(modifier = Modifier.weight(1f))
@@ -202,7 +202,7 @@ fun WalletsScreen(
                          launcher.launch(android.Manifest.permission.READ_SMS)
                     }
                 }) {
-                   Icon(Icons.Default.Message, contentDescription = "Scan SMS", tint = NeonCyan)
+                   Icon(Icons.Sharp.Message, contentDescription = "Scan SMS", tint = NeonCyan)
                 }
             }
 
@@ -231,11 +231,11 @@ fun AccountCard(account: Account) {
     val color = try { Color(android.graphics.Color.parseColor(account.colorHex)) } catch (e: Exception) { NeonCyan }
     
     val icon = when (account.type) {
-        "CASH" -> Icons.Default.AccountBalanceWallet
-        "BANK" -> Icons.Default.AccountBalance
-        "CREDIT_CARD" -> Icons.Default.CreditCard
-        "UPI" -> Icons.Default.QrCode
-        else -> Icons.Default.AccountBalance
+        "CASH" -> Icons.Sharp.AccountBalanceWallet
+        "BANK" -> Icons.Sharp.AccountBalance
+        "CREDIT_CARD" -> Icons.Sharp.CreditCard
+        "UPI" -> Icons.Sharp.QrCode
+        else -> Icons.Sharp.AccountBalance
     }
 
     GlassCard(

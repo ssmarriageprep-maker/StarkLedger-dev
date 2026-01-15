@@ -6,39 +6,74 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// Using Default fonts for now, but styling them to look techy
+// A professional, modern typography for a fintech app
+// Consider adding a custom font like Inter or Poppins in a real project.
 val StarkTypography = Typography(
     displayLarge = TextStyle(
-        fontFamily = FontFamily.Monospace,
+        fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
-        fontSize = 57.sp,
-        letterSpacing = (-0.25).sp,
-        color = NeonCyan
+        fontSize = 48.sp,
+        lineHeight = 56.sp,
+        letterSpacing = (-0.5).sp,
+        color = TextPrimary
     ),
-    displayMedium = TextStyle( // Balances
-        fontFamily = FontFamily.Monospace,
+    displayMedium = TextStyle(
+        fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Bold,
-        fontSize = 45.sp,
-        color = TextWhite
+        fontSize = 40.sp,
+        lineHeight = 48.sp,
+        color = TextPrimary
+    ),
+    headlineLarge = TextStyle( // Page Titles
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 32.sp,
+        lineHeight = 40.sp,
+        color = TextPrimary
     ),
     headlineMedium = TextStyle( // Section Headers
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 28.sp,
-        letterSpacing = 2.sp, // Futuristic spacing
-        color = JarvisGold
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
+        color = AccentGold
     ),
-    bodyLarge = TextStyle(
+    titleLarge = TextStyle( // Card Headers
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Medium,
+        fontSize = 20.sp,
+        lineHeight = 28.sp,
+        color = TextPrimary
+    ),
+    bodyLarge = TextStyle( // Body Text
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
-        color = TextWhite
+        lineHeight = 24.sp,
+        letterSpacing = 0.5.sp,
+        color = TextPrimary
     ),
-    labelMedium = TextStyle( // Buttons / Tags
-        fontFamily = FontFamily.Monospace,
+    bodyMedium = TextStyle( // Supporting Text
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.25.sp,
+        color = TextSecondary
+    ),
+    labelLarge = TextStyle( // Buttons
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.1.sp,
+        color = TextPrimary
+    ),
+    labelMedium = TextStyle( // Small labels, captions
+        fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Medium,
         fontSize = 12.sp,
-        letterSpacing = 1.sp,
-        color = NeonCyan
+        lineHeight = 16.sp,
+        color = TextSecondary
     )
 )
