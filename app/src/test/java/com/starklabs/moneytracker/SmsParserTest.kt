@@ -416,12 +416,31 @@ class SmsParserTest {
     }
 
     @Test
-    fun `fallback to sender ID for merchant`() {
-        val body = "Rs 300 debited from HDFC Bank A/C *1234 via UPI. Txn: 123456"
-        val result = SmsParser.parseSms("AD-ZOMATO", body, 123456789L)
+    fun `handle 'To report' without capturing 'report' as merchant`() {
+        val body = "Rs 137.00 spent at MERCHANT. To report unauthorized transaction call 123."
+        val result = SmsParser.parseSms("BANK", body, 123456789L)
         
         assertTrue(result.isTransaction)
-        assertEquals("ZOMATO", result.merchant)
+        assertEquals("MERCHANT", result.merchant)
+    }
+
+    @Test
+    fun `prefer name over phone number when both are present with prefixes`() {
+        // This is a hypothetical case where both might match the pattern
+        val body = "Paid Rs 50 to 7308080808. Transferred to JOHN DOE."
+        val result = SmsParser.parseSms("BANK", body, 123456789L)
+
+        assertTrue(result.isTransaction)
+        assertEquals("JOHN DOE", result.merchant)
+    }
+
+    @Test
+    fun `handle numeric receiver when no name is available`() {
+        val body = "Paid Rs 52.00 to 7308080808 via UPI."
+        val result = SmsParser.parseSms("BANK", body, 123456789L)
+
+        assertTrue(result.isTransaction)
+        assertEquals("7308080808", result.merchant)
     }
 
     // ========================================
