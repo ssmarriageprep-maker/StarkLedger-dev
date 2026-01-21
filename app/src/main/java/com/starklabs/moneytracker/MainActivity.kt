@@ -66,9 +66,8 @@ class MainActivity : AppCompatActivity() {
                          com.starklabs.moneytracker.ui.wallets.WalletsScreen(navController, viewModel)
                     }
                     composable(Screen.Settings.route) {
-                        com.starklabs.moneytracker.ui.settings.SettingsScreen(repository)
+                        com.starklabs.moneytracker.ui.settings.SettingsScreen(navController, repository)
                     }
-                    // Other screens...
                 }
             }
         }

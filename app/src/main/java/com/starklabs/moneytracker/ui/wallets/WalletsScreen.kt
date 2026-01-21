@@ -3,49 +3,38 @@ package com.starklabs.moneytracker.ui.wallets
 import android.content.Context
 import android.provider.Telephony
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.sharp.Add
-import androidx.compose.material.icons.sharp.ArrowBack
-import androidx.compose.material.icons.sharp.CreditCard
-import androidx.compose.material.icons.sharp.AccountBalanceWallet
-import androidx.compose.material.icons.sharp.AccountBalance
-import androidx.compose.material.icons.sharp.QrCode
-import androidx.compose.material.icons.sharp.Message
+import androidx.compose.material.icons.sharp.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import com.starklabs.moneytracker.data.Account
+import com.starklabs.moneytracker.ui.Screen
+import com.starklabs.moneytracker.ui.components.*
+import com.starklabs.moneytracker.ui.theme.*
+import android.content.pm.PackageManager
+import androidx.compose.foundation.border
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.starklabs.moneytracker.data.Account
 import com.starklabs.moneytracker.data.MoneyRepository
-import com.starklabs.moneytracker.ui.Screen
-import com.starklabs.moneytracker.ui.components.GlassCard
-import com.starklabs.moneytracker.ui.components.NeonText
-import com.starklabs.moneytracker.ui.components.NeonButton
-import com.starklabs.moneytracker.ui.theme.NeonCyan
-import com.starklabs.moneytracker.ui.theme.TextGrey
-import com.starklabs.moneytracker.ui.theme.TextWhite
-import com.starklabs.moneytracker.ui.theme.HotRed
-import com.starklabs.moneytracker.ui.theme.StarkBlack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.content.ContextCompat
-import android.content.pm.PackageManager
 
 class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
     val accounts = repository.allAccounts
@@ -59,10 +48,10 @@ class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
                 projection,
                 null,
                 null,
-                "date DESC LIMIT 500" // Scan last 500 messages
+                "date DESC LIMIT 500"
             )
 
-            val sessionAccounts = mutableMapOf<String, Int>() // last4 -> id
+            val sessionAccounts = mutableMapOf<String, Int>()
             var transactionsCreated = 0
             var messagesRejected = 0
             var newAccountsCreated = 0
@@ -83,7 +72,6 @@ class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
                         if (parsed.isTransaction && parsed.accountLast4 != null) {
                             val last4 = parsed.accountLast4!!
                             
-                            // Get or create account ID
                             var accountId = sessionAccounts[last4]
                             if (accountId == null) {
                                 val existingAccount = repository.findAccountForSms(last4)
@@ -94,7 +82,7 @@ class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
                                     val newAccount = Account(
                                         name = "$bankName - $last4",
                                         type = "BANK",
-                                        balance = 0.0, // Default initialization
+                                        balance = 0.0,
                                         maskedNumber = last4,
                                         colorHex = "#FFD700"
                                     )
@@ -105,7 +93,6 @@ class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
                                 sessionAccounts[last4] = accountId
                             }
                             
-                            // Add transaction
                             val amount = parsed.amount ?: 0.0
                             if (amount > 0.0) {
                                 val merchant = parsed.merchant ?: "Unknown Merchant"
@@ -146,7 +133,11 @@ class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
 
 class WalletsViewModelFactory(private val repository: MoneyRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return WalletsViewModel(repository) as T
+        if (modelClass.isAssignableFrom(WalletsViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return WalletsViewModel(repository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }
 
@@ -169,36 +160,22 @@ fun WalletsScreen(
         }
     )
 
-    Scaffold(
-        containerColor = StarkBlack,
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate(Screen.AddAccount.route) },
-                containerColor = NeonCyan,
-                contentColor = StarkBlack
-            ) {
-                Icon(Icons.Sharp.Add, contentDescription = "Add Account")
-            }
-        }
-    ) { padding ->
+    Box(modifier = Modifier.fillMaxSize().background(StarkBackground)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .padding(16.dp)
         ) {
-            // Header
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 IconButton(onClick = { navController.popBackStack() }) {
                     Icon(Icons.Sharp.ArrowBack, contentDescription = "Back", tint = NeonCyan)
                 }
-                NeonText(text = "ACCOUNTS", style = MaterialTheme.typography.headlineMedium)
-                Spacer(modifier = Modifier.weight(1f))
+                HudHeader(
+                    title = "ACCOUNTS",
+                    subtitle = "MANAGING LIQUIDITY SOURCES",
+                    modifier = Modifier.weight(1f)
+                )
                 
-                // Scan Button
                 IconButton(onClick = {
                     if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
                          viewModel.scanForAccounts(context)
@@ -214,7 +191,7 @@ fun WalletsScreen(
 
             if (accounts.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    NeonText("No Accounts Found. Add Manually or Scan SMS.", color = TextGrey)
+                    NeonText("NO ACCOUNTS DETECTED // SCAN OR ADD MANUALLY", color = TextGrey, style = MaterialTheme.typography.labelSmall)
                 }
             } else {
                 LazyColumn(
@@ -225,6 +202,17 @@ fun WalletsScreen(
                         AccountCard(account)
                     }
                 }
+            }
+        }
+
+        Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.BottomEnd) {
+            FloatingActionButton(
+                onClick = { navController.navigate(Screen.AddAccount.route) },
+                containerColor = NeonCyan,
+                contentColor = StarkBlack,
+                shape = CutCornerShape(topStart = 12.dp, bottomEnd = 12.dp)
+            ) {
+                Icon(Icons.Sharp.Add, contentDescription = "Add Account")
             }
         }
     }
@@ -244,42 +232,43 @@ fun AccountCard(account: Account) {
 
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
-        borderColor = color.copy(alpha = 0.8f)
+        borderColor = color.copy(alpha = 0.5f)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Icon Box
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(color.copy(alpha = 0.2f), shape = MaterialTheme.shapes.medium),
+                        .size(44.dp)
+                        .background(color.copy(alpha = 0.1f), shape = CutCornerShape(8.dp))
+                        .border(1.dp, color.copy(alpha = 0.3f), shape = CutCornerShape(8.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(icon, contentDescription = null, tint = color)
+                    Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
                 }
                 
                 Spacer(modifier = Modifier.width(16.dp))
                 
                 Column {
-                    NeonText(text = account.name, color = TextWhite, style = MaterialTheme.typography.titleMedium)
+                    NeonText(text = account.name.uppercase(), color = TextWhite, style = MaterialTheme.typography.titleSmall)
                     NeonText(text = account.type, color = TextGrey, style = MaterialTheme.typography.labelSmall)
                     if (account.maskedNumber != null) {
-                        NeonText(text = "••• ${account.maskedNumber}", color = TextGrey, style = MaterialTheme.typography.labelSmall)
+                        NeonText(text = "ID: •••• ${account.maskedNumber}", color = TextGrey.copy(alpha = 0.6f), style = MaterialTheme.typography.labelSmall)
                     }
                 }
             }
             
-            NeonText(
-                text = "₹${String.format("%.2f", account.balance)}",
-                color = if (account.balance < 0) HotRed else color,
-                style = MaterialTheme.typography.titleLarge
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                NeonText(
+                    text = "₹${String.format("%,.2f", account.balance)}",
+                    color = if (account.balance < 0) ExpenseRed else color,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                NeonText(text = "STATUS: ACTIVE", color = IncomeGreen.copy(alpha = 0.5f), style = MaterialTheme.typography.labelSmall)
+            }
         }
     }
 }
