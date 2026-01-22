@@ -10,19 +10,20 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CutCornerShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -31,6 +32,8 @@ import com.starklabs.moneytracker.ui.theme.NeonCyan
 import com.starklabs.moneytracker.ui.theme.NeonCyanDim
 import com.starklabs.moneytracker.ui.theme.StarkSurface
 import com.starklabs.moneytracker.ui.theme.TextWhite
+import com.starklabs.moneytracker.ui.theme.JarvisGold
+import com.starklabs.moneytracker.ui.theme.StarkBlack
 
 @Composable
 fun GlassCard(
@@ -40,9 +43,9 @@ fun GlassCard(
 ) {
     Card(
         modifier = modifier,
-        shape = CutCornerShape(topStart = 0.dp, bottomEnd = 16.dp, topEnd = 16.dp, bottomStart = 16.dp), // Futuristic Shape
-        colors = CardDefaults.cardColors(containerColor = StarkSurface.copy(alpha = 0.7f)),
-        border = BorderStroke(1.dp, borderColor)
+        shape = CutCornerShape(topStart = 0.dp, bottomEnd = 16.dp, topEnd = 0.dp, bottomStart = 16.dp), // More aggressive shape
+        colors = CardDefaults.cardColors(containerColor = StarkSurface.copy(alpha = 0.6f)),
+        border = BorderStroke(1.dp, Brush.linearGradient(listOf(borderColor, borderColor.copy(alpha = 0.1f))))
     ) {
         Column(modifier = Modifier.padding(16.dp), content = content)
     }
@@ -53,17 +56,41 @@ fun NeonText(
     text: String,
     modifier: Modifier = Modifier,
     color: Color = NeonCyan,
-    style: androidx.compose.ui.text.TextStyle = androidx.compose.material3.MaterialTheme.typography.bodyLarge
+    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyLarge
 ) {
-    // In a real customized engine, we'd draw twice for glow. 
-    // For now, we use vibrant colors and high contrast.
     Text(
         text = text,
         modifier = modifier,
         color = color,
         style = style,
-        fontWeight = FontWeight.Bold
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 1.sp
     )
+}
+
+@Composable
+fun HudHeader(
+    title: String,
+    subtitle: String? = null,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.size(4.dp, 24.dp).background(NeonCyan))
+            Spacer(modifier = Modifier.width(8.dp))
+            NeonText(text = title.uppercase(), style = MaterialTheme.typography.headlineSmall)
+        }
+        if (subtitle != null) {
+            NeonText(
+                text = subtitle.uppercase(),
+                color = JarvisGold,
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(start = 12.dp)
+            )
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Brush.horizontalGradient(listOf(NeonCyan, Color.Transparent))))
+    }
 }
 
 @Composable
@@ -76,12 +103,18 @@ fun HudButton(
     Box(
         modifier = modifier
             .clickable(onClick = onClick)
-            .background(color.copy(alpha = 0.1f), shape = CutCornerShape(8.dp))
-            .border(1.dp, color, shape = CutCornerShape(8.dp))
-            .padding(horizontal = 24.dp, vertical = 12.dp),
+            .background(color.copy(alpha = 0.05f), shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp))
+            .border(1.dp, color.copy(alpha = 0.5f), shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp))
+            .padding(horizontal = 16.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = text.uppercase(), color = color, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+        Text(
+            text = text.uppercase(),
+            color = color,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 2.sp,
+            style = MaterialTheme.typography.labelSmall
+        )
     }
 }
 
@@ -103,13 +136,13 @@ fun NeonTextField(
     modifier: Modifier = Modifier,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default
 ) {
-    androidx.compose.material3.OutlinedTextField(
+    OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label, color = NeonCyanDim) },
+        label = { Text(label.uppercase(), color = NeonCyanDim, letterSpacing = 1.sp, fontSize = 10.sp) },
         modifier = modifier,
         textStyle = androidx.compose.ui.text.TextStyle(color = TextWhite),
-        colors = androidx.compose.material3.TextFieldDefaults.colors(
+        colors = TextFieldDefaults.colors(
             focusedContainerColor = Color.Transparent,
             unfocusedContainerColor = Color.Transparent,
             focusedIndicatorColor = NeonCyan,
@@ -119,48 +152,110 @@ fun NeonTextField(
             unfocusedLabelColor = NeonCyanDim
         ),
         keyboardOptions = keyboardOptions,
-        shape = CutCornerShape(8.dp)
+        shape = CutCornerShape(topStart = 8.dp, bottomEnd = 8.dp)
     )
 }
 
 @Composable
 fun ArcReactor(
-    percentage: Float, // 0.0 to 1.0
+    percentage: Float,
     modifier: Modifier = Modifier,
-    color: Color = NeonCyan // Or Red if over budget
+    color: Color = NeonCyan
 ) {
-    val infiniteTransition = rememberInfiniteTransition()
+    val infiniteTransition = rememberInfiniteTransition(label = "arc_reactor")
+
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(4000, easing = LinearEasing)
+        ),
+        label = "rotation"
+    )
+
     val pulse by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
+        initialValue = 0.6f,
         targetValue = 1.0f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing),
+            animation = tween(1500, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
-        )
+        ),
+        label = "pulse"
     )
 
     Canvas(modifier = modifier) {
-        // Outer Ring
+        val center = Offset(size.width / 2, size.height / 2)
+        val radius = size.minDimension / 2
+
+        // 1. Static Outer Glow
         drawCircle(
-            color = color.copy(alpha = 0.3f),
-            style = Stroke(width = 4.dp.toPx())
+            brush = Brush.radialGradient(
+                colors = listOf(color.copy(alpha = 0.1f), Color.Transparent),
+                center = center,
+                radius = radius * 1.2f
+            )
+        )
+
+        // 2. Rotating Dash Ring
+        withTransform({
+            rotate(rotation, center)
+        }) {
+            drawCircle(
+                color = color.copy(alpha = 0.2f),
+                radius = radius * 0.95f,
+                style = Stroke(
+                    width = 2.dp.toPx(),
+                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 20f))
+                )
+            )
+        }
+
+        // 3. Main Progress Arc
+        drawArc(
+            color = color.copy(alpha = 0.2f),
+            startAngle = 0f,
+            sweepAngle = 360f,
+            useCenter = false,
+            style = Stroke(width = 8.dp.toPx())
         )
         
-        // Progress Arc
         drawArc(
             color = color,
             startAngle = -90f,
-            sweepAngle = 360 * percentage,
+            sweepAngle = 360f * percentage,
             useCenter = false,
             style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round)
         )
+
+        // 4. Inner Technical Rings
+        drawCircle(
+            color = color.copy(alpha = 0.4f),
+            radius = radius * 0.7f,
+            style = Stroke(width = 1.dp.toPx())
+        )
         
-        // Core Glow
+        // 5. Core Reactor
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(color.copy(alpha = 0.8f), Color.Transparent)
-            ),
-            radius = size.minDimension / 2.5f * pulse
+                colors = listOf(color.copy(alpha = 0.9f * pulse), color.copy(alpha = 0.3f), Color.Transparent),
+                center = center,
+                radius = radius * 0.6f
+            )
         )
+
+        // Inner technical markings
+        for (i in 0 until 8) {
+            val angle = i * 45f
+            withTransform({
+                rotate(angle + rotation * -0.5f, center)
+            }) {
+                drawLine(
+                    color = color,
+                    start = Offset(center.x, center.y - radius * 0.7f),
+                    end = Offset(center.x, center.y - radius * 0.6f),
+                    strokeWidth = 2.dp.toPx()
+                )
+            }
+        }
     }
 }

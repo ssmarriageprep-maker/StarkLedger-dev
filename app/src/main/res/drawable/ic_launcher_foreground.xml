@@ -3,10 +3,40 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-  <path
-      android:pathData="M54,54m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0"
-      android:fillColor="@color/accent_cyan"/>
-  <path
-      android:pathData="M60,30 L40,50 L60,50 L60,70 L80,50 L60,50 Z"
-      android:fillColor="@color/stark_background"/>
+
+    <!-- Outer Ring -->
+    <path
+        android:pathData="M54,54m-45,0a45,45 0,1 1,90 0a45,45 0,1 1,-90 0"
+        android:strokeWidth="1"
+        android:strokeColor="@color/accent_cyan"/>
+
+    <!-- Main Segments -->
+    <path
+        android:pathData="M54,18 L54,28 M54,80 L54,90 M18,54 L28,54 M80,54 L90,54"
+        android:strokeWidth="4"
+        android:strokeColor="@color/accent_cyan"
+        android:strokeLineCap="round"/>
+
+    <path
+        android:pathData="M28.5,28.5 L35.5,35.5 M72.5,72.5 L79.5,79.5 M28.5,79.5 L35.5,72.5 M72.5,28.5 L79.5,35.5"
+        android:strokeWidth="4"
+        android:strokeColor="@color/accent_cyan"
+        android:strokeLineCap="round"/>
+
+    <!-- Inner Glow Base -->
+    <path
+        android:pathData="M54,54m-20,0a20,20 0,1 1,40 0a20,20 0,1 1,-40 0"
+        android:fillColor="#3300E5FF"/>
+
+    <!-- Core -->
+    <path
+        android:pathData="M54,54m-12,0a12,12 0,1 1,24 0a12,12 0,1 1,-24 0"
+        android:fillColor="@color/accent_cyan"/>
+
+    <!-- Technical details -->
+    <path
+        android:pathData="M54,54m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0"
+        android:strokeWidth="0.5"
+        android:strokeColor="@color/accent_cyan"/>
+
 </vector>

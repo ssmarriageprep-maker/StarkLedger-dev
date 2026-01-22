@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.sharp.ArrowBack
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -12,24 +14,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.navigation.NavController
 import com.starklabs.moneytracker.data.MoneyRepository
-import com.starklabs.moneytracker.ui.components.GlassCard
-import com.starklabs.moneytracker.ui.components.HudButton
-import com.starklabs.moneytracker.ui.components.NeonText
-import com.starklabs.moneytracker.ui.theme.JarvisGold
-import com.starklabs.moneytracker.ui.theme.NeonCyan
-import com.starklabs.moneytracker.ui.theme.NeonCyanDim
-import com.starklabs.moneytracker.ui.theme.StarkBlack
+import com.starklabs.moneytracker.ui.components.*
+import com.starklabs.moneytracker.ui.theme.*
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileWriter
 
 @Composable
-fun SettingsScreen(repository: MoneyRepository) {
+fun SettingsScreen(
+    navController: NavController,
+    repository: MoneyRepository
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // SAF Launcher for saving file
     val saveLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/csv"),
         onResult = { uri ->
@@ -40,48 +40,74 @@ fun SettingsScreen(repository: MoneyRepository) {
                         context.contentResolver.openOutputStream(it)?.use { stream ->
                             stream.write(csvData.toByteArray())
                         }
-                        android.widget.Toast.makeText(context, "Export Saved Successfully", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, "EXPORT PROTOCOL: SUCCESS", android.widget.Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
-                         android.widget.Toast.makeText(context, "Export Failed: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                         android.widget.Toast.makeText(context, "EXPORT ERROR: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
     )
 
-    Box(modifier = Modifier.fillMaxSize().background(StarkBlack)) {
+    Box(modifier = Modifier.fillMaxSize().background(StarkBackground)) {
         Column(modifier = Modifier.padding(16.dp)) {
-            NeonText(text = "SYSTEM CONFIG", style = MaterialTheme.typography.headlineMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(Icons.Sharp.ArrowBack, contentDescription = "Back", tint = NeonCyan)
+                }
+                HudHeader(title = "SYSTEM CONFIG", subtitle = "MANAGING DATA PROTOCOLS")
+            }
             
             Spacer(modifier = Modifier.height(32.dp))
             
             GlassCard(modifier = Modifier.fillMaxWidth()) {
-                NeonText(text = "DATA MANAGEMENT", color = JarvisGold)
+                NeonText(text = "CORE DATA ENGINE", color = JarvisGold, style = MaterialTheme.typography.titleSmall)
                 Spacer(modifier = Modifier.height(16.dp))
                 
+                NeonText(
+                    text = "EXPORT ALL FINANCIAL LOGS TO CSV FORMAT FOR EXTERNAL AUDIT.",
+                    color = TextGrey,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
                 HudButton(
-                    text = "SAVE CSV LOCALLY", 
+                    text = "SAVE ARCHIVE LOCALLY",
                     onClick = {
-                        val fileName = "starkledger_export_${System.currentTimeMillis()}.csv"
+                        val fileName = "starkledger_archive_${System.currentTimeMillis()}.csv"
                         saveLauncher.launch(fileName)
                     },
                     modifier = Modifier.fillMaxWidth(),
                     color = NeonCyan
                 )
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 HudButton(
-                    text = "SHARE CSV", 
+                    text = "TRANSMIT ARCHIVE (SHARE)",
                     onClick = {
                         scope.launch {
                             exportData(context, repository)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    color = NeonCyanDim
+                    color = NeonCyan.copy(alpha = 0.7f)
                 )
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                NeonText(text = "FIRMWARE INFORMATION", color = JarvisGold, style = MaterialTheme.typography.titleSmall)
+                Spacer(modifier = Modifier.height(12.dp))
+                NeonText(text = "VERSION: 1.2.0-STARK", style = MaterialTheme.typography.labelSmall, color = TextWhite)
+                NeonText(text = "OS: JARVIS-HUD-KOTLIN", style = MaterialTheme.typography.labelSmall, color = TextWhite)
+                NeonText(text = "ENCRYPTION: AES-256 (SIMULATED)", style = MaterialTheme.typography.labelSmall, color = TextGrey)
+            }
+        }
+
+        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomCenter) {
+            NeonText(text = "PROPERTY OF STARK INDUSTRIES", color = TextGrey.copy(alpha = 0.3f), style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -99,5 +125,5 @@ suspend fun exportData(context: Context, repository: MoneyRepository) {
         putExtra(Intent.EXTRA_STREAM, uri)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
-    context.startActivity(Intent.createChooser(intent, "Export Data"))
+    context.startActivity(Intent.createChooser(intent, "EXPORT ARCHIVE"))
 }
