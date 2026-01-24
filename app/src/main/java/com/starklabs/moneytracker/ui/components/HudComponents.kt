@@ -39,11 +39,12 @@ import com.starklabs.moneytracker.ui.theme.StarkBlack
 fun GlassCard(
     modifier: Modifier = Modifier,
     borderColor: Color = NeonCyanDim,
+    shape: androidx.compose.ui.graphics.Shape = CutCornerShape(topStart = 0.dp, bottomEnd = 16.dp, topEnd = 0.dp, bottomStart = 16.dp),
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
         modifier = modifier,
-        shape = CutCornerShape(topStart = 0.dp, bottomEnd = 16.dp, topEnd = 0.dp, bottomStart = 16.dp), // More aggressive shape
+        shape = shape,
         colors = CardDefaults.cardColors(containerColor = StarkSurface.copy(alpha = 0.6f)),
         border = BorderStroke(1.dp, Brush.linearGradient(listOf(borderColor, borderColor.copy(alpha = 0.1f))))
     ) {

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import com.starklabs.moneytracker.data.AppSettingsRepository
 
 data class DashboardState(
     val totalSpent: Double = 0.0,
@@ -19,7 +20,10 @@ data class DashboardState(
     val budgetProgress: Float = 0.0f
 )
 
-class DashboardViewModel(private val repository: MoneyRepository) : ViewModel() {
+class DashboardViewModel(
+    private val repository: MoneyRepository,
+    private val appSettingsRepository: AppSettingsRepository
+) : ViewModel() {
 
     // Seed defaults on init (simplified for this demo)
     // Init block removed: Seeding is handled safely in Repository or should be triggered once by MainActivity if needed.
@@ -32,8 +36,9 @@ class DashboardViewModel(private val repository: MoneyRepository) : ViewModel() 
         repository.totalSpent,
         repository.totalIncome,
         repository.allTransactions,
-        repository.allCategories
-    ) { spent, income, transactions, categories ->
+        repository.allCategories,
+        appSettingsRepository.dashboardLogCount
+    ) { spent: Double?, income: Double?, transactions: List<Transaction>, categories: List<com.starklabs.moneytracker.data.Category>, logCount: Int ->
         val s = spent ?: 0.0
         val i = income ?: 0.0
         val b = i - s
@@ -48,17 +53,20 @@ class DashboardViewModel(private val repository: MoneyRepository) : ViewModel() 
             totalSpent = s,
             totalIncome = i,
             balance = b,
-            recentTransactions = transactions.take(10), // Show top 10
+            recentTransactions = transactions.take(logCount),
             budgetProgress = progress
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardState())
 }
 
-class DashboardViewModelFactory(private val repository: MoneyRepository) : ViewModelProvider.Factory {
+class DashboardViewModelFactory(
+    private val repository: MoneyRepository,
+    private val appSettingsRepository: AppSettingsRepository
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return DashboardViewModel(repository) as T
+            return DashboardViewModel(repository, appSettingsRepository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.compose.foundation.shape.CutCornerShape
 import com.starklabs.moneytracker.ui.components.*
 import com.starklabs.moneytracker.ui.theme.*
 
@@ -98,9 +99,13 @@ fun AnalyticsScreen(
 
 @Composable
 fun CategoryAuditItem(perf: CategoryPerformance) {
+    val isNearLimit = perf.percentage > 0.85f
+    val glowColor = if (perf.percentage > 0.95f) ExpenseRed else if (isNearLimit) JarvisOrange else NeonCyan
+
     GlassCard(
-        borderColor = if (perf.percentage > 0.9f) ExpenseRed.copy(alpha = 0.5f) else NeonCyan.copy(alpha = 0.2f),
-        modifier = Modifier.fillMaxWidth()
+        borderColor = glowColor.copy(alpha = 0.4f),
+        modifier = Modifier.fillMaxWidth(),
+        shape = CutCornerShape(8.dp)
     ) {
         Column {
             Row(
@@ -120,12 +125,12 @@ fun CategoryAuditItem(perf: CategoryPerformance) {
             }
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Technical Progress Bar
+            // Technical Progress Bar Enhanced
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(4.dp)
-                    .background(StarkSurface)
+                    .height(6.dp)
+                    .background(StarkSurface, shape = CutCornerShape(2.dp))
             ) {
                 Box(
                     modifier = Modifier
@@ -133,10 +138,25 @@ fun CategoryAuditItem(perf: CategoryPerformance) {
                         .fillMaxHeight()
                         .background(
                             Brush.horizontalGradient(
-                                listOf(perf.color.copy(alpha = 0.5f), perf.color)
-                            )
+                                listOf(glowColor.copy(alpha = 0.3f), glowColor)
+                            ),
+                            shape = CutCornerShape(2.dp)
                         )
                 )
+
+                // Technical Grid markers on progress bar
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val steps = 10
+                    val stepWidth = size.width / steps
+                    for (i in 1 until steps) {
+                        drawLine(
+                            color = StarkBackground.copy(alpha = 0.5f),
+                            start = Offset(i * stepWidth, 0f),
+                            end = Offset(i * stepWidth, size.height),
+                            strokeWidth = 1.dp.toPx()
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
