@@ -130,10 +130,20 @@ fun DashboardScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
             
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(2.dp, 16.dp).background(JarvisGold))
-                Spacer(modifier = Modifier.width(8.dp))
-                NeonText(text = "TRANSACTION LOGS", color = JarvisGold, style = MaterialTheme.typography.titleSmall)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(2.dp, 16.dp).background(JarvisGold))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    NeonText(text = "TRANSACTION LOGS", color = JarvisGold, style = MaterialTheme.typography.titleSmall)
+                }
+
+                TextButton(onClick = { navController.navigate(Screen.History.route) }) {
+                    NeonText(text = "VIEW ALL ARCHIVES //", color = NeonCyan, style = MaterialTheme.typography.labelSmall)
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
 

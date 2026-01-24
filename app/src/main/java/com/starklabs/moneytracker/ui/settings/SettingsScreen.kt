@@ -7,8 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.sharp.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -22,13 +21,20 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileWriter
 
+import com.starklabs.moneytracker.data.AppSettingsRepository
+
 @Composable
 fun SettingsScreen(
     navController: NavController,
-    repository: MoneyRepository
+    repository: MoneyRepository,
+    appSettingsRepository: AppSettingsRepository
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    val factory = AppSettingsViewModelFactory(appSettingsRepository)
+    val viewModel: AppSettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
+    val dashboardLogCount by viewModel.dashboardLogCount.collectAsState()
 
     val saveLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/csv"),
@@ -92,6 +98,37 @@ fun SettingsScreen(
                     },
                     modifier = Modifier.fillMaxWidth(),
                     color = NeonCyan.copy(alpha = 0.7f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                NeonText(text = "DASHBOARD PREFERENCES", color = JarvisGold, style = MaterialTheme.typography.titleSmall)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                NeonText(
+                    text = "LOG HISTORY LIMIT: $dashboardLogCount",
+                    color = TextWhite,
+                    style = MaterialTheme.typography.labelSmall
+                )
+
+                Slider(
+                    value = dashboardLogCount.toFloat(),
+                    onValueChange = { viewModel.setDashboardLogCount(it.toInt()) },
+                    valueRange = 5f..50f,
+                    steps = 9, // 5, 10, 15, ..., 50
+                    colors = SliderDefaults.colors(
+                        thumbColor = NeonCyan,
+                        activeTrackColor = NeonCyan,
+                        inactiveTrackColor = StarkSurface
+                    )
+                )
+
+                NeonText(
+                    text = "CONFIGURES THE NUMBER OF RECENT TRANSACTIONS VISIBLE ON THE PRIMARY HUD.",
+                    color = TextGrey,
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
 
