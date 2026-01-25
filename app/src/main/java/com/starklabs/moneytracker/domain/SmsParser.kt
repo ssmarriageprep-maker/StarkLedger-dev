@@ -38,11 +38,11 @@ object SmsParser {
 
     // Match full amount including commas and decimals.
     // Group 1 captures the amount string.
-    private val AMOUNT_PATTERN = Pattern.compile("(?:Rs\\.?|INR|₹)\\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\\.[0-9]{1,2})?|[0-9]{1,3}(?:,[0-9]{3})*(?:\\.[0-9]{1,2})?|[0-9]+(?:\\.[0-9]{1,2})?)", Pattern.CASE_INSENSITIVE)
+    private val AMOUNT_PATTERN = Pattern.compile("(?:Rs\\.?|INR|₹)\\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\\.[0-9]{1,2})?|[0-9]+(?:\\.[0-9]{1,2})?)", Pattern.CASE_INSENSITIVE)
 
     private val BANK_PATTERN = Pattern.compile("\\b(HDFC|SBI|ICICI|AXIS|KOTAK|PNB|IDFC|YES|CANARA|FEDERAL)\\b", Pattern.CASE_INSENSITIVE)
     private val ACCOUNT_PATTERN = Pattern.compile("(?:A/C|Acct|Account)\\s+([*X]+[0-9]{2,})", Pattern.CASE_INSENSITIVE)
-    private val MERCHANT_PATTERN = Pattern.compile("(?:To|Paid to|Transferred to|Sent to)\\s+([A-Za-z0-9\\s&'.\\-]{2,60})", Pattern.CASE_INSENSITIVE)
+    private val MERCHANT_PATTERN = Pattern.compile("(?:To|Paid to|Transferred to|Sent to)\\s+([A-Za-z0-9\\s&'.\\-/:]{2,60})", Pattern.CASE_INSENSITIVE)
     private val DATE_PATTERN = Pattern.compile("(?:On\\s+)?([0-9]{2}[/-][0-9]{2}[/-](?:[0-9]{4}|[0-9]{2})|[0-9]{2}-[A-Za-z]{3}-[0-9]{2})", Pattern.CASE_INSENSITIVE)
     private val REF_PATTERN = Pattern.compile("(?:Ref|Txn ID|Txn|UTR|Reference)[:\\s\\-]*([A-Za-z0-9]+)", Pattern.CASE_INSENSITIVE)
 

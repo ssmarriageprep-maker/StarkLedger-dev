@@ -399,4 +399,13 @@ class SmsParserTest {
         assertTrue(result.isTransaction)
         assertEquals("IDC KITCHEN PRIVATE LIMITED MALL OF ASIA", result.merchant)
     }
+
+    @Test
+    fun `extract amount correctly for Rs dot 2000`() {
+        val body = "Sent Rs.2000.00 from HDFC Bank A/C *3263"
+        val result = SmsParser.parseSms("HDFCBK", body, 123456789L)
+
+        assertTrue(result.isTransaction)
+        assertEquals(2000.00, result.amount!!, 0.01)
+    }
 }
