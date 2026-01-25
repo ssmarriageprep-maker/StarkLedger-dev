@@ -57,7 +57,9 @@ fun NeonText(
     text: String,
     modifier: Modifier = Modifier,
     color: Color = NeonCyan,
-    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyLarge
+    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyLarge,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: androidx.compose.ui.text.style.TextOverflow = androidx.compose.ui.text.style.TextOverflow.Clip
 ) {
     Text(
         text = text,
@@ -65,7 +67,9 @@ fun NeonText(
         color = color,
         style = style,
         fontWeight = FontWeight.Bold,
-        letterSpacing = 1.sp
+        letterSpacing = 1.sp,
+        maxLines = maxLines,
+        overflow = overflow
     )
 }
 
