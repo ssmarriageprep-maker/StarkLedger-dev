@@ -369,4 +369,43 @@ class SmsParserTest {
         assertTrue(result.isTransaction)
         assertEquals(15000.50, result.balance!!, 0.01)
     }
+
+    @Test
+    fun `extract merchant with newline before 'On' delimiter`() {
+        val body = """
+            Sent Rs.2000.00
+            From HDFC Bank A/C *3263
+            To BHAGINI HOSPITALITIES PVT LTD SUITES
+            On 31/12/25
+            Ref 573106200893
+        """.trimIndent()
+        val result = SmsParser.parseSms("HDFCBK", body, 123456789L)
+
+        assertTrue(result.isTransaction)
+        assertEquals("BHAGINI HOSPITALITIES PVT LTD SUITES", result.merchant)
+    }
+
+    @Test
+    fun `extract merchant with ON 30 pattern`() {
+        val body = """
+            Sent Rs.500.00
+            From HDFC Bank A/C *3263
+            To IDC KITCHEN PRIVATE LIMITED MALL OF ASIA
+            ON 30/12/25
+            Ref 573106200893
+        """.trimIndent()
+        val result = SmsParser.parseSms("HDFCBK", body, 123456789L)
+
+        assertTrue(result.isTransaction)
+        assertEquals("IDC KITCHEN PRIVATE LIMITED MALL OF ASIA", result.merchant)
+    }
+
+    @Test
+    fun `extract amount correctly for Rs dot 2000`() {
+        val body = "Sent Rs.2000.00 from HDFC Bank A/C *3263"
+        val result = SmsParser.parseSms("HDFCBK", body, 123456789L)
+
+        assertTrue(result.isTransaction)
+        assertEquals(2000.00, result.amount!!, 0.01)
+    }
 }

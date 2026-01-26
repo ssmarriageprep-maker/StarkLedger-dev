@@ -188,7 +188,7 @@ fun TransactionItem(t: com.starklabs.moneytracker.data.Transaction) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                 NeonText(text = t.merchant.uppercase(), style = MaterialTheme.typography.titleSmall, color = TextWhite)
                 NeonText(text = formatDate(t.date), style = MaterialTheme.typography.bodySmall, color = TextGrey)
             }
