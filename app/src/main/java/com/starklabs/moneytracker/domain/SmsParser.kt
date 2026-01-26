@@ -38,7 +38,7 @@ object SmsParser {
 
     // Match full amount including commas and decimals.
     // Group 1 captures the amount string.
-    private val AMOUNT_PATTERN = Pattern.compile("(?:Rs\\.?|INR|₹)\\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\\.[0-9]{1,2})?|[0-9]+(?:\\.[0-9]{1,2})?)", Pattern.CASE_INSENSITIVE)
+    private val AMOUNT_PATTERN = Pattern.compile("(?:Rs\\.?|INR|₹)\\s*([0-9]+(?:,[0-9]+)*(?:\\.[0-9]{1,2})?)", Pattern.CASE_INSENSITIVE)
 
     private val BANK_PATTERN = Pattern.compile("\\b(HDFC|SBI|ICICI|AXIS|KOTAK|PNB|IDFC|YES|CANARA|FEDERAL)\\b", Pattern.CASE_INSENSITIVE)
     private val ACCOUNT_PATTERN = Pattern.compile("(?:A/C|Acct|Account)\\s+([*X]+[0-9]{2,})", Pattern.CASE_INSENSITIVE)
@@ -46,7 +46,7 @@ object SmsParser {
     private val DATE_PATTERN = Pattern.compile("(?:On\\s+)?([0-9]{2}[/-][0-9]{2}[/-](?:[0-9]{4}|[0-9]{2})|[0-9]{2}-[A-Za-z]{3}-[0-9]{2})", Pattern.CASE_INSENSITIVE)
     private val REF_PATTERN = Pattern.compile("(?:Ref|Txn ID|Txn|UTR|Reference)[:\\s\\-]*([A-Za-z0-9]+)", Pattern.CASE_INSENSITIVE)
 
-    private val BALANCE_PATTERN = Pattern.compile("(?:Avl Bal|Available Balance|Bal|Balance)[:\\s\\-]*(?:Rs\\.?|INR|₹)?\\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\\.[0-9]{1,2})?|[0-9]{1,3}(?:,[0-9]{3})*(?:\\.[0-9]{1,2})?|[0-9]+(?:\\.[0-9]{1,2})?)", Pattern.CASE_INSENSITIVE)
+    private val BALANCE_PATTERN = Pattern.compile("(?:Avl Bal|Available Balance|Bal|Balance)[:\\s\\-]*(?:Rs\\.?|INR|₹)?\\s*([0-9]+(?:,[0-9]+)*(?:\\.[0-9]{1,2})?)", Pattern.CASE_INSENSITIVE)
 
     fun parseSms(sender: String, body: String, timestamp: Long): ParsedSms {
         val lowerBody = body.lowercase()
@@ -70,10 +70,22 @@ object SmsParser {
 
         // STEP 3 — AMOUNT EXTRACTION
         val amountMatcher = AMOUNT_PATTERN.matcher(body)
-        var amountStr: String? = null
+        val balanceMatcher = BALANCE_PATTERN.matcher(body)
 
-        if (amountMatcher.find()) {
-            amountStr = amountMatcher.group(1)
+        val balanceRanges = mutableListOf<IntRange>()
+        while (balanceMatcher.find()) {
+            balanceRanges.add(balanceMatcher.start()..balanceMatcher.end())
+        }
+
+        var amountStr: String? = null
+        while (amountMatcher.find()) {
+            val start = amountMatcher.start()
+            val end = amountMatcher.end()
+            // Only consider amount if it's not part of a balance statement
+            if (balanceRanges.none { range -> start >= range.first && end <= range.last }) {
+                amountStr = amountMatcher.group(1)
+                break
+            }
         }
 
         val amount: Double
