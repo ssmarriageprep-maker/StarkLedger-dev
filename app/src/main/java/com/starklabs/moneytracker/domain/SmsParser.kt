@@ -19,21 +19,21 @@ data class ParsedSms(
 
 object SmsParser {
     private val REJECT_KEYWORDS = listOf(
-        "offer", "recharge", "data", "validity", "ott", "xstream", "airtel", "jio", "vi",
-        "vodafone", "bsnl", "bill reminder", "bill due", "statement", "minimum due",
-        "emi", "loan", "credit card offer", "cashback offer", "promo", "otp", "verification code"
+        "offer", "recharge", "data", "validity", "ott", "xstream", "bill reminder", "bill due", "statement", "minimum due",
+        "emi", "loan", "credit card offer", "cashback offer", "promo", "otp", "verification code",
+        "due by", "min payment", "minimum payment"
     )
 
     private val REJECT_PATTERN = Pattern.compile("(?i)\\b(?:" + REJECT_KEYWORDS.joinToString("|") { Pattern.quote(it) } + ")\\b")
 
-    private val INDICATOR_ACTION = listOf("sent", "paid", "debited", "spent", "transferred", "transfer", "credited", "received")
+    private val INDICATOR_ACTION = listOf("sent", "paid", "debited", "spent", "transferred", "transfer", "credited", "received", "payment", "withdrawn", "deducted")
     private val INDICATOR_BANK = listOf("HDFC", "SBI", "ICICI", "AXIS", "KOTAK", "PNB", "IDFC", "YES", "CANARA", "FEDERAL")
-    private val INDICATOR_ACCOUNT = listOf("A/C", "Acct", "Account")
-    private val INDICATOR_ACCOUNT_PATTERN = Pattern.compile("(?i)(?:[*X]{1,}|XX)[0-9]{2,}")
+    private val INDICATOR_ACCOUNT = listOf("A/C", "Acct", "Account", "card")
+    private val INDICATOR_ACCOUNT_PATTERN = Pattern.compile("(?i)(?:[*X]{1,}|XX|card ending\\s+|card\\s+[*X]*)[0-9]{2,}")
     private val INDICATOR_METHOD = listOf("UPI", "IMPS", "NEFT", "RTGS")
     private val INDICATOR_REF = listOf("Ref", "Txn", "UTR", "Reference")
 
-    private val DEBIT_KEYWORDS = setOf("sent", "paid", "debited", "spent", "transfer", "transferred")
+    private val DEBIT_KEYWORDS = setOf("sent", "paid", "debited", "spent", "transfer", "transferred", "withdrawn", "deducted", "made a payment")
     private val CREDIT_KEYWORDS = setOf("credited", "received", "refund")
 
     // Match full amount including commas and decimals.
@@ -41,8 +41,8 @@ object SmsParser {
     private val AMOUNT_PATTERN = Pattern.compile("(?:Rs\\.?|INR|₹)\\s*([0-9]+(?:,[0-9]+)*(?:\\.[0-9]{1,2})?)", Pattern.CASE_INSENSITIVE)
 
     private val BANK_PATTERN = Pattern.compile("\\b(HDFC|SBI|ICICI|AXIS|KOTAK|PNB|IDFC|YES|CANARA|FEDERAL)\\b", Pattern.CASE_INSENSITIVE)
-    private val ACCOUNT_PATTERN = Pattern.compile("(?:A/C|Acct|Account)\\s+([*X]+[0-9]{2,})", Pattern.CASE_INSENSITIVE)
-    private val MERCHANT_PATTERN = Pattern.compile("(?:To|Paid to|Transferred to|Sent to)\\s+([A-Za-z0-9\\s&'.\\-/:]{2,60})", Pattern.CASE_INSENSITIVE)
+    private val ACCOUNT_PATTERN = Pattern.compile("(?:A/C|Acct|Account|Card ending|Card)\\s+([*X]*[0-9]{2,})", Pattern.CASE_INSENSITIVE)
+    private val MERCHANT_PATTERN = Pattern.compile("(?:To|Paid to|Transferred to|Sent to|at|for|spent at|spent on)\\s+([A-Za-z0-9\\s&'.\\-/:]{2,60})", Pattern.CASE_INSENSITIVE)
     private val DATE_PATTERN = Pattern.compile("(?:On\\s+)?([0-9]{2}[/-][0-9]{2}[/-](?:[0-9]{4}|[0-9]{2})|[0-9]{2}-[A-Za-z]{3}-[0-9]{2})", Pattern.CASE_INSENSITIVE)
     private val REF_PATTERN = Pattern.compile("(?:Ref|Txn ID|Txn|UTR|Reference)[:\\s\\-]*([A-Za-z0-9]+)", Pattern.CASE_INSENSITIVE)
 
@@ -59,7 +59,7 @@ object SmsParser {
         // STEP 2 — TRANSACTION CONFIRMATION RULE
         var indicatorsFound = 0
         if (INDICATOR_ACTION.any { body.contains(it, ignoreCase = true) }) indicatorsFound++
-        if (INDICATOR_BANK.any { body.contains(it, ignoreCase = true) }) indicatorsFound++
+        if (INDICATOR_BANK.any { body.contains(it, ignoreCase = true) || sender.contains(it, ignoreCase = true) }) indicatorsFound++
         if (INDICATOR_ACCOUNT.any { body.contains(it, ignoreCase = true) } || INDICATOR_ACCOUNT_PATTERN.matcher(body).find()) indicatorsFound++
         if (INDICATOR_METHOD.any { body.contains(it, ignoreCase = true) } || body.contains("UPI", ignoreCase = true)) indicatorsFound++
         if (INDICATOR_REF.any { body.contains(it, ignoreCase = true) } || REF_PATTERN.matcher(body).find()) indicatorsFound++
@@ -106,9 +106,19 @@ object SmsParser {
 
         // STEP 6 — TRANSACTION TYPE
         var type: String? = null
-        if (CREDIT_KEYWORDS.any { body.contains(it, ignoreCase = true) }) {
+        val firstCredit = CREDIT_KEYWORDS
+            .map { body.indexOf(it, ignoreCase = true) }
+            .filter { it != -1 }
+            .minOrNull() ?: Int.MAX_VALUE
+
+        val firstDebit = DEBIT_KEYWORDS
+            .map { body.indexOf(it, ignoreCase = true) }
+            .filter { it != -1 }
+            .minOrNull() ?: Int.MAX_VALUE
+
+        if (firstCredit < firstDebit) {
             type = "credit"
-        } else if (DEBIT_KEYWORDS.any { body.contains(it, ignoreCase = true) }) {
+        } else if (firstDebit < firstCredit) {
             type = "debit"
         }
 
@@ -119,7 +129,11 @@ object SmsParser {
         // STEP 5 — BANK & ACCOUNT EXTRACTION
         var bank: String? = null
         val bankMatcher = BANK_PATTERN.matcher(body)
-        if (bankMatcher.find()) bank = bankMatcher.group(1).uppercase()
+        if (bankMatcher.find()) {
+            bank = bankMatcher.group(1).uppercase()
+        } else {
+            bank = INDICATOR_BANK.find { sender.contains(it, ignoreCase = true) }?.uppercase()
+        }
 
         var accountLast4: String? = null
         val accountMatcher = ACCOUNT_PATTERN.matcher(body)
@@ -135,15 +149,16 @@ object SmsParser {
         if (merchantMatcher.find()) {
             var candidate = merchantMatcher.group(1).trim()
 
-            val delimitersRegex = Regex("(?i)\\s+(?:via|on|from|a/c|account|ref|txn|utr|to|card)\\b")
+            val delimitersRegex = Regex("(?i)\\s+(?:via|on|from|a/c|account|ref|txn|utr|to|card ending|at|for)\\b")
             val match = delimitersRegex.find(candidate)
             if (match != null) {
                 candidate = candidate.substring(0, match.range.first).trim()
             }
 
             candidate = candidate.replace(Regex("\\s+"), " ").trim()
+            candidate = candidate.replace(Regex("[.,:\\-]+$"), "").trim()
 
-            val isPhone = candidate.matches(Regex(".*\\b\\d{10,}\\b.*")) || candidate.matches(Regex(".*\\d{10,}.*"))
+            val isPhone = candidate.matches(Regex(".*\\d{10,}.*"))
             val isUrl = candidate.contains("http") || candidate.contains(".com") || candidate.contains(".in")
             val isBank = INDICATOR_BANK.any { b -> candidate.split(Regex("\\s+")).any { it.equals(b, ignoreCase = true) } }
 
