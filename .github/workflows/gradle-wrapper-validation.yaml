@@ -64,7 +64,7 @@ jobs:
           echo "✅ Cleaned up temporary Gradle installation files"
       
       - name: Validate Gradle wrapper
-        uses: gradle/wrapper-validation-action@v2
+        uses: gradle/actions/wrapper-validation@v4
       
       - name: Create Pull Request with wrapper files
         if: steps.check_wrapper.outputs.wrapper_missing == 'true'
