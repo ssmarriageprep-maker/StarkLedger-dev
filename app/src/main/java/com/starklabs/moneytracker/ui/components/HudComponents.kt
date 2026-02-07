@@ -195,9 +195,9 @@ fun ArcReactor(
         // 1. Static Outer Glow
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(color.copy(alpha = 0.1f), Color.Transparent),
+                colors = listOf(color.copy(alpha = 0.2f), Color.Transparent),
                 center = center,
-                radius = radius * 1.2f
+                radius = radius * 1.3f
             )
         )
 
@@ -206,26 +206,30 @@ fun ArcReactor(
             rotate(rotation, center)
         }) {
             drawCircle(
-                color = color.copy(alpha = 0.2f),
+                color = color.copy(alpha = 0.3f),
                 radius = radius * 0.95f,
                 style = Stroke(
                     width = 2.dp.toPx(),
-                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(10f, 20f))
+                    pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(15f, 25f))
                 )
             )
         }
 
-        // 3. Main Progress Arc
+        // 3. Main Progress Arc Background
         drawArc(
-            color = color.copy(alpha = 0.2f),
+            color = color.copy(alpha = 0.1f),
             startAngle = 0f,
             sweepAngle = 360f,
             useCenter = false,
             style = Stroke(width = 8.dp.toPx())
         )
         
+        // Active Progress Arc with Gradient
         drawArc(
-            color = color,
+            brush = Brush.sweepGradient(
+                colors = listOf(color.copy(alpha = 0.5f), color),
+                center = center
+            ),
             startAngle = -90f,
             sweepAngle = 360f * percentage,
             useCenter = false,
@@ -234,7 +238,7 @@ fun ArcReactor(
 
         // 4. Inner Technical Rings
         drawCircle(
-            color = color.copy(alpha = 0.4f),
+            color = color.copy(alpha = 0.5f),
             radius = radius * 0.7f,
             style = Stroke(width = 1.dp.toPx())
         )
@@ -242,20 +246,20 @@ fun ArcReactor(
         // 5. Core Reactor
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(color.copy(alpha = 0.9f * pulse), color.copy(alpha = 0.3f), Color.Transparent),
+                colors = listOf(color.copy(alpha = 1f * pulse), color.copy(alpha = 0.4f), Color.Transparent),
                 center = center,
-                radius = radius * 0.6f
+                radius = radius * 0.5f
             )
         )
 
         // Inner technical markings
-        for (i in 0 until 8) {
-            val angle = i * 45f
+        for (i in 0 until 12) {
+            val angle = i * 30f
             withTransform({
                 rotate(angle + rotation * -0.5f, center)
             }) {
                 drawLine(
-                    color = color,
+                    color = color.copy(alpha = 0.6f),
                     start = Offset(center.x, center.y - radius * 0.7f),
                     end = Offset(center.x, center.y - radius * 0.6f),
                     strokeWidth = 2.dp.toPx()

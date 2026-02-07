@@ -10,42 +10,52 @@ import androidx.compose.ui.unit.sp
 // Consider adding a custom font like Inter or Poppins in a real project.
 val StarkTypography = Typography(
     displayLarge = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FontFamily.Monospace, // Tech look
         fontWeight = FontWeight.Bold,
         fontSize = 48.sp,
         lineHeight = 56.sp,
-        letterSpacing = (-0.5).sp,
+        letterSpacing = (-1).sp,
         color = TextPrimary
     ),
     displayMedium = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Bold,
         fontSize = 40.sp,
         lineHeight = 48.sp,
+        letterSpacing = (-0.5).sp,
         color = TextPrimary
     ),
-    headlineLarge = TextStyle( // Page Titles
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
+    headlineLarge = TextStyle(
+        fontFamily = FontFamily.Monospace,
+        fontWeight = FontWeight.Medium,
         fontSize = 32.sp,
         lineHeight = 40.sp,
         color = TextPrimary
     ),
-    headlineMedium = TextStyle( // Section Headers
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.SemiBold,
+    headlineMedium = TextStyle(
+        fontFamily = FontFamily.Monospace,
+        fontWeight = FontWeight.Medium,
         fontSize = 24.sp,
         lineHeight = 32.sp,
-        color = AccentGold
+        letterSpacing = 0.5.sp,
+        color = AccentCyan
     ),
-    titleLarge = TextStyle( // Card Headers
-        fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Medium,
-        fontSize = 20.sp,
+    titleLarge = TextStyle(
+        fontFamily = FontFamily.Default, // Readability
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 22.sp,
         lineHeight = 28.sp,
         color = TextPrimary
     ),
-    bodyLarge = TextStyle( // Body Text
+    titleMedium = TextStyle(
+        fontFamily = FontFamily.Monospace,
+        fontWeight = FontWeight.Medium,
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.15.sp,
+        color = TextPrimary
+    ),
+    bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
@@ -53,27 +63,28 @@ val StarkTypography = Typography(
         letterSpacing = 0.5.sp,
         color = TextPrimary
     ),
-    bodyMedium = TextStyle( // Supporting Text
+    bodyMedium = TextStyle(
         fontFamily = FontFamily.Default,
-        fontWeight = FontWeight.Normal,
+        fontWeight = FontWeight.Light, // Clean look
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.25.sp,
         color = TextSecondary
     ),
-    labelLarge = TextStyle( // Buttons
-        fontFamily = FontFamily.Default,
+    labelLarge = TextStyle(
+        fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
         letterSpacing = 0.1.sp,
         color = TextPrimary
     ),
-    labelMedium = TextStyle( // Small labels, captions
-        fontFamily = FontFamily.Default,
+    labelSmall = TextStyle(
+        fontFamily = FontFamily.Monospace,
         fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
+        fontSize = 11.sp,
         lineHeight = 16.sp,
+        letterSpacing = 0.5.sp,
         color = TextSecondary
     )
 )

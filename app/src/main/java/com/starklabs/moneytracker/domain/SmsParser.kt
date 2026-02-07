@@ -32,8 +32,9 @@ object SmsParser {
     private val INDICATOR_ACCOUNT_PATTERN = Pattern.compile("(?i)(?:[*X]{1,}|XX|card ending\\s+|card\\s+[*X]*)[0-9]{2,}")
     private val INDICATOR_METHOD = listOf("UPI", "IMPS", "NEFT", "RTGS")
     private val INDICATOR_REF = listOf("Ref", "Txn", "UTR", "Reference")
+    private val INDICATOR_CURRENCY = listOf("Rs", "INR", "₹")
 
-    private val DEBIT_KEYWORDS = setOf("sent", "paid", "debited", "spent", "transfer", "transferred", "withdrawn", "deducted", "made a payment")
+    private val DEBIT_KEYWORDS = setOf("sent", "paid", "debited", "spent", "transfer", "transferred", "withdrawn", "deducted", "made a payment", "done")
     private val CREDIT_KEYWORDS = setOf("credited", "received", "refund")
 
     // Match full amount including commas and decimals.
@@ -63,6 +64,8 @@ object SmsParser {
         if (INDICATOR_ACCOUNT.any { body.contains(it, ignoreCase = true) } || INDICATOR_ACCOUNT_PATTERN.matcher(body).find()) indicatorsFound++
         if (INDICATOR_METHOD.any { body.contains(it, ignoreCase = true) } || body.contains("UPI", ignoreCase = true)) indicatorsFound++
         if (INDICATOR_REF.any { body.contains(it, ignoreCase = true) } || REF_PATTERN.matcher(body).find()) indicatorsFound++
+        if (INDICATOR_CURRENCY.any { body.contains(it, ignoreCase = true) }) indicatorsFound++
+        if (AMOUNT_PATTERN.matcher(body).find()) indicatorsFound++
 
         if (indicatorsFound < 2) {
             return ParsedSms(isTransaction = false, reason = "Insufficient transaction confidence", rawMessage = body)

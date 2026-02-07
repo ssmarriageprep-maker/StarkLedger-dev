@@ -94,6 +94,22 @@ object SmsParserExamples {
         )
 
         println()
+        
+        // MESSAGES FIXED
+        println("✅ FIXED CASES")
+        println("-".repeat(80))
+
+        testMessage(
+            "BANK",
+            "Txn of INR 200.00 done on 12-12-25. Avl Bal: INR 5000.00"
+        )
+
+        testMessage(
+            "GPAY",
+            "You paid ₹350 to Swiggy"
+        )
+
+        println()
         println("=".repeat(80))
         println("SUMMARY")
         println("=".repeat(80))
