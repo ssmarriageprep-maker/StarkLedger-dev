@@ -64,7 +64,6 @@ object SmsParser {
         if (INDICATOR_ACCOUNT.any { body.contains(it, ignoreCase = true) } || INDICATOR_ACCOUNT_PATTERN.matcher(body).find()) indicatorsFound++
         if (INDICATOR_METHOD.any { body.contains(it, ignoreCase = true) } || body.contains("UPI", ignoreCase = true)) indicatorsFound++
         if (INDICATOR_REF.any { body.contains(it, ignoreCase = true) } || REF_PATTERN.matcher(body).find()) indicatorsFound++
-        if (INDICATOR_CURRENCY.any { body.contains(it, ignoreCase = true) }) indicatorsFound++
         if (AMOUNT_PATTERN.matcher(body).find()) indicatorsFound++
 
         if (indicatorsFound < 2) {
@@ -133,7 +132,7 @@ object SmsParser {
         var bank: String? = null
         val bankMatcher = BANK_PATTERN.matcher(body)
         if (bankMatcher.find()) {
-            bank = bankMatcher.group(1).uppercase()
+            bank = bankMatcher.group(1)?.uppercase()
         } else {
             bank = INDICATOR_BANK.find { sender.contains(it, ignoreCase = true) }?.uppercase()
         }
@@ -142,31 +141,34 @@ object SmsParser {
         val accountMatcher = ACCOUNT_PATTERN.matcher(body)
         if (accountMatcher.find()) {
             val fullAcc = accountMatcher.group(1)
-            accountLast4 = fullAcc.takeLast(4).filter { it.isDigit() }
-            if (accountLast4.length < 2) accountLast4 = null
+            accountLast4 = fullAcc?.takeLast(4)?.filter { it.isDigit() }
+            if (accountLast4 != null && accountLast4.length < 2) accountLast4 = null
         }
 
         // STEP 4 — SENDER / MERCHANT EXTRACTION
         var merchant: String? = null
         val merchantMatcher = MERCHANT_PATTERN.matcher(body)
         if (merchantMatcher.find()) {
-            var candidate = merchantMatcher.group(1).trim()
+            val rawCandidate = merchantMatcher.group(1)
+            if (rawCandidate != null) {
+                var candidate = rawCandidate.trim()
 
-            val delimitersRegex = Regex("(?i)\\s+(?:via|on|from|a/c|account|ref|txn|utr|to|card ending|at|for)\\b")
-            val match = delimitersRegex.find(candidate)
-            if (match != null) {
-                candidate = candidate.substring(0, match.range.first).trim()
-            }
+                val delimitersRegex = Regex("(?i)\\s+(?:via|on|from|a/c|account|ref|txn|utr|to|card ending|at|for)\\b")
+                val match = delimitersRegex.find(candidate)
+                if (match != null) {
+                    candidate = candidate.substring(0, match.range.first).trim()
+                }
 
-            candidate = candidate.replace(Regex("\\s+"), " ").trim()
-            candidate = candidate.replace(Regex("[.,:\\-]+$"), "").trim()
+                candidate = candidate.replace(Regex("\\s+"), " ").trim()
+                candidate = candidate.replace(Regex("[.,:\\-]+$"), "").trim()
 
-            val isPhone = candidate.matches(Regex(".*\\d{10,}.*"))
-            val isUrl = candidate.contains("http") || candidate.contains(".com") || candidate.contains(".in")
-            val isBank = INDICATOR_BANK.any { b -> candidate.split(Regex("\\s+")).any { it.equals(b, ignoreCase = true) } }
+                val isPhone = candidate.matches(Regex(".*\\d{10,}.*"))
+                val isUrl = candidate.contains("http") || candidate.contains(".com") || candidate.contains(".in")
+                val isBank = INDICATOR_BANK.any { b -> candidate.split(Regex("\\s+")).any { it.equals(b, ignoreCase = true) } }
 
-            if (!isPhone && !isUrl && !isBank && candidate.length > 2) {
-                merchant = candidate
+                if (!isPhone && !isUrl && !isBank && candidate.length > 2) {
+                    merchant = candidate
+                }
             }
         }
 
