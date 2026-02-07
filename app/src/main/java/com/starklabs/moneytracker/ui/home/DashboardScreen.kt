@@ -165,6 +165,7 @@ fun DashboardScreen(
                 }
             }
         }
+        }
         
         // Floating Action Button Styled
         Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.BottomEnd) {
