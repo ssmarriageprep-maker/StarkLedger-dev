@@ -212,8 +212,8 @@ object SmsParser {
             )
         }
 
-        // ── PHASE 2: Extraction (only if transactional & confidence >= 80) ─
-        if (classification.confidence < 80) {
+        // ── PHASE 2: Extraction (only if transactional & confidence >= 70) ─
+        if (classification.confidence < 70) {
             return ParsedSms(
                 isTransaction = false,
                 reason = "Insufficient transaction confidence (${classification.confidence}%)",
@@ -276,7 +276,10 @@ object SmsParser {
         if (hasMethod)        score += 5
 
         // Penalties
-        if (hasRejectKeyword) score -= 30   // but still can pass if signals are strong
+        if (hasRejectKeyword) {
+            // Penalize less if keyword is present alongside strong transaction signals
+            score -= if (hasTransactionSignals) 10 else 30
+        }
         if (isTelecomSender && !hasTransactionSignals) score -= 20
 
         // Clamp
@@ -285,7 +288,7 @@ object SmsParser {
         // ── Pattern detection ───────────────────────────────────────────
         val pattern = detectPattern(body, hasActionWord, hasMethod, hasBank, hasAccountMask)
 
-        val isTransactional = score >= 80
+        val isTransactional = score >= 70
         return ClassificationResult(
             category = if (isTransactional) "transactional" else "non-transactional",
             confidence = score,
@@ -508,7 +511,7 @@ object SmsParser {
         candidate = candidate.replace(Regex("_+$"), "").trim()
 
         // Truncate at delimiter keywords
-        val delimitersRegex = Regex("(?i)\\s+(?:via|on|from|a/c|account|ref|txn|utr|to|card ending|at|for|not you|if not)\\b")
+        val delimitersRegex = Regex("(?i)\\s+(?:via|on|from|a/c|account|ref|txn|utr|to|card ending|at|for|using|with|is|not you|if not)\\b")
         val match = delimitersRegex.find(candidate)
         if (match != null) {
             candidate = candidate.substring(0, match.range.first).trim()
