@@ -89,3 +89,4 @@ jobs:
           name: dependencies-layer
           path: dependencies-layer.zip
           retention-days: 7
+          compression-level: 9

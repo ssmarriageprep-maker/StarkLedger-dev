@@ -57,6 +57,8 @@ jobs:
         with:
           name: lint-reports
           path: app/build/reports/lint-results*.html
+          retention-days: 7
+          compression-level: 9
 
       # 10. Upload test reports
       - name: Upload Test Reports
@@ -64,3 +66,5 @@ jobs:
         with:
           name: unit-test-reports
           path: app/build/reports/tests/testDebugUnitTest/
+          retention-days: 7
+          compression-level: 9

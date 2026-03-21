@@ -65,6 +65,8 @@ jobs:
         with:
           name: debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          retention-days: 7
+          compression-level: 9
 
       # 8) Upload Release APK
       - name: Upload Release APK
@@ -72,3 +74,5 @@ jobs:
         with:
           name: release-apk
           path: app/build/outputs/apk/release/*.apk
+          retention-days: 7
+          compression-level: 9
