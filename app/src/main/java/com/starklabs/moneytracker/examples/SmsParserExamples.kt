@@ -3,21 +3,23 @@ package com.starklabs.moneytracker.examples
 import com.starklabs.moneytracker.domain.SmsParser
 
 /**
- * Example usage of the High-Precision SMS Parser
+ * Example usage of the Next-Generation SMS Intelligence Engine
  * 
- * This file demonstrates how the parser handles various types of SMS messages
+ * Demonstrates the two-phase architecture:
+ * Phase 1 — Classification with confidence scoring and pattern detection
+ * Phase 2 — Intelligent extraction with multi-pass strategy
  */
 object SmsParserExamples {
 
     @JvmStatic
     fun main(args: Array<String>) {
         println("=".repeat(80))
-        println("HIGH-PRECISION SMS PARSER - EXAMPLES")
+        println("NEXT-GEN SMS INTELLIGENCE ENGINE — EXAMPLES")
         println("=".repeat(80))
         println()
 
         // ✅ VALID TRANSACTIONS
-        println("✅ VALID TRANSACTIONS")
+        println("✅ VALID TRANSACTIONS (Phase 1 → Phase 2)")
         println("-".repeat(80))
         
         testMessage(
@@ -42,8 +44,19 @@ object SmsParserExamples {
 
         println()
         
+        // ✅ SMART REJECTION — passes despite keyword
+        println("✅ SMART REJECTION — Transaction WITH reject keyword (should PASS)")
+        println("-".repeat(80))
+
+        testMessage(
+            "HDFCBK",
+            "Rs 943.00 paid for BSNL bill from HDFC A/C *1234 via UPI"
+        )
+
+        println()
+        
         // ❌ REJECTED - PROMOTIONAL
-        println("❌ REJECTED - PROMOTIONAL MESSAGES")
+        println("❌ REJECTED — PROMOTIONAL MESSAGES")
         println("-".repeat(80))
         
         testMessage(
@@ -64,7 +77,7 @@ object SmsParserExamples {
         println()
         
         // ❌ REJECTED - BILLS & OTP
-        println("❌ REJECTED - BILLS, OTP & OTHER NON-TRANSACTIONS")
+        println("❌ REJECTED — BILLS, OTP & OTHER")
         println("-".repeat(80))
         
         testMessage(
@@ -83,40 +96,32 @@ object SmsParserExamples {
         )
 
         println()
-        
-        // ❌ REJECTED - INSUFFICIENT INDICATORS
-        println("❌ REJECTED - INSUFFICIENT TRANSACTION INDICATORS")
-        println("-".repeat(80))
-        
-        testMessage(
-            "BANK",
-            "Your balance is Rs 5000. Thank you for banking with us."
-        )
 
-        println()
-        
-        // MESSAGES FIXED
-        println("✅ FIXED CASES")
+        // ✅ MULTI-LINE SMS
+        println("✅ MULTI-LINE SMS (fragmented messages)")
         println("-".repeat(80))
 
         testMessage(
-            "BANK",
-            "Txn of INR 200.00 done on 12-12-25. Avl Bal: INR 5000.00"
-        )
-
-        testMessage(
-            "GPAY",
-            "You paid ₹350 to Swiggy"
+            "HDFCBK",
+            """
+            Sent Rs.2000.00
+            From HDFC Bank A/C *3263
+            To BHAGINI HOSPITALITIES PVT LTD SUITES
+            On 31/12/25
+            Ref 573106200893
+            """.trimIndent()
         )
 
         println()
         println("=".repeat(80))
         println("SUMMARY")
         println("=".repeat(80))
-        println("✅ Valid transactions are parsed with full details")
-        println("❌ Promotional messages are rejected with clear reasons")
-        println("💰 Amount extraction is accurate (never returns 0.0)")
-        println("🔍 Requires at least 2 transaction indicators")
+        println("✅ Two-phase architecture: classify first, then extract")
+        println("🧠 Smart rejection: reject keywords + signal check (not hard)")
+        println("📊 Structured confidence scoring (0-100)")
+        println("🔍 Pattern detection with enum (UPI_SENT, BANK_DEBIT, etc.)")
+        println("💰 Multi-pass amount extraction (strict → relaxed → context)")
+        println("🔐 SHA-256 message hash for duplicate detection")
         println("=".repeat(80))
     }
 
@@ -127,19 +132,25 @@ object SmsParserExamples {
         println("Message: ${body.take(100)}${if (body.length > 100) "..." else ""}")
         println()
         
+        // Phase 1 output
+        println("   📊 Category: ${result.category ?: "—"}")
+        println("   📊 Confidence: ${result.confidence}%")
+        println("   📊 Pattern: ${result.patternUsed}")
+        println("   🔐 Hash: ${result.messageHash?.take(16)}...")
+
         if (result.isTransaction) {
-            println("✅ VALID TRANSACTION")
-            println("   Amount: ${result.currency} ${result.amount}")
-            println("   Type: ${result.transactionType}")
-            result.bank?.let { println("   Bank: $it") }
-            result.accountLast4?.let { println("   Account: ****$it") }
-            result.merchant?.let { println("   Merchant: $it") }
-            result.date?.let { println("   Date: $it") }
-            result.reference?.let { println("   Reference: $it") }
-            result.reference?.let { println("   Reference: $it") }
+            println("   ✅ VALID TRANSACTION")
+            println("   💰 Amount: ${result.currency} ${result.amount}")
+            println("   🔄 Type: ${result.transactionType}")
+            result.bank?.let { println("   🏦 Bank: $it") }
+            result.accountLast4?.let { println("   💳 Account: ****$it") }
+            result.merchant?.let { println("   👤 Merchant: $it") }
+            result.date?.let { println("   📅 Date: $it") }
+            result.reference?.let { println("   🧾 Reference: $it") }
+            result.balance?.let { println("   💵 Balance: INR $it") }
         } else {
-            println("❌ REJECTED")
-            println("   Reason: ${result.reason}")
+            println("   ❌ REJECTED")
+            println("   📝 Reason: ${result.reason}")
         }
         
         println()
