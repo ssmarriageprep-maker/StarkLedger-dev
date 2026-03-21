@@ -20,9 +20,9 @@ import com.starklabs.moneytracker.ui.theme.*
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileWriter
-
 import com.starklabs.moneytracker.data.AppSettingsRepository
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController,
@@ -46,105 +46,113 @@ fun SettingsScreen(
                         context.contentResolver.openOutputStream(it)?.use { stream ->
                             stream.write(csvData.toByteArray())
                         }
-                        android.widget.Toast.makeText(context, "EXPORT PROTOCOL: SUCCESS", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(context, "Export Success", android.widget.Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
-                         android.widget.Toast.makeText(context, "EXPORT ERROR: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                         android.widget.Toast.makeText(context, "Export Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         }
     )
 
-    Box(modifier = Modifier.fillMaxSize().background(StarkBackground)) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Sharp.ArrowBack, contentDescription = "Back", tint = NeonCyan)
-                }
-                HudHeader(title = "SYSTEM CONFIG", subtitle = "MANAGING DATA PROTOCOLS")
-            }
+    Scaffold(
+        containerColor = StarkBackground,
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings", style = StarkTypography.titleLarge, color = TextPrimary) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Sharp.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = StarkBackground)
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 20.dp)
+        ) {
+            Spacer(modifier = Modifier.height(16.dp))
             
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                NeonText(text = "CORE DATA ENGINE", color = JarvisGold, style = MaterialTheme.typography.titleSmall)
-                Spacer(modifier = Modifier.height(16.dp))
+            StarkCard(modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Data Management", style = StarkTypography.titleMedium, color = TextPrimary)
+                Spacer(modifier = Modifier.height(12.dp))
                 
-                NeonText(
-                    text = "EXPORT ALL FINANCIAL LOGS TO CSV FORMAT FOR EXTERNAL AUDIT.",
-                    color = TextGrey,
-                    style = MaterialTheme.typography.labelSmall,
+                Text(
+                    text = "Export all financial logs to CSV format for external audit.",
+                    color = TextSecondary,
+                    style = StarkTypography.bodyMedium,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                HudButton(
-                    text = "SAVE ARCHIVE LOCALLY",
+                StarkButton(
+                    text = "SAVE LOCALLY",
                     onClick = {
                         val fileName = "starkledger_archive_${System.currentTimeMillis()}.csv"
                         saveLauncher.launch(fileName)
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = NeonCyan
+                    modifier = Modifier.fillMaxWidth()
                 )
                 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                HudButton(
-                    text = "TRANSMIT ARCHIVE (SHARE)",
+                StarkButton(
+                    text = "SHARE EXPORT",
                     onClick = {
                         scope.launch {
                             exportData(context, repository)
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    color = NeonCyan.copy(alpha = 0.7f)
+                    isEnabled = true
                 )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                NeonText(text = "DASHBOARD PREFERENCES", color = JarvisGold, style = MaterialTheme.typography.titleSmall)
+            StarkCard(modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Dashboard Preferences", style = StarkTypography.titleMedium, color = TextPrimary)
                 Spacer(modifier = Modifier.height(16.dp))
 
-                NeonText(
-                    text = "LOG HISTORY LIMIT: $dashboardLogCount",
-                    color = TextWhite,
-                    style = MaterialTheme.typography.labelSmall
+                Text(
+                    text = "Recent Logs Limit: $dashboardLogCount",
+                    color = TextPrimary,
+                    style = StarkTypography.bodyMedium
                 )
 
                 Slider(
                     value = dashboardLogCount.toFloat(),
                     onValueChange = { viewModel.setDashboardLogCount(it.toInt()) },
                     valueRange = 5f..50f,
-                    steps = 9, // 5, 10, 15, ..., 50
+                    steps = 9,
                     colors = SliderDefaults.colors(
-                        thumbColor = NeonCyan,
-                        activeTrackColor = NeonCyan,
-                        inactiveTrackColor = StarkSurface
+                        thumbColor = AccentSecondary,
+                        activeTrackColor = AccentSecondary,
+                        inactiveTrackColor = StarkSurfaceVariant
                     )
                 )
 
-                NeonText(
-                    text = "CONFIGURES THE NUMBER OF RECENT TRANSACTIONS VISIBLE ON THE PRIMARY HUD.",
-                    color = TextGrey,
-                    style = MaterialTheme.typography.labelSmall
+                Text(
+                    text = "Controls the number of transactions visible natively on the dashboard.",
+                    color = TextSecondary,
+                    style = StarkTypography.labelSmall
                 )
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            GlassCard(modifier = Modifier.fillMaxWidth()) {
-                NeonText(text = "FIRMWARE INFORMATION", color = JarvisGold, style = MaterialTheme.typography.titleSmall)
+            StarkCard(modifier = Modifier.fillMaxWidth()) {
+                Text(text = "System Information", style = StarkTypography.titleMedium, color = TextPrimary)
                 Spacer(modifier = Modifier.height(12.dp))
-                NeonText(text = "VERSION: 1.2.0-STARK", style = MaterialTheme.typography.labelSmall, color = TextWhite)
-                NeonText(text = "OS: JARVIS-HUD-KOTLIN", style = MaterialTheme.typography.labelSmall, color = TextWhite)
-                NeonText(text = "ENCRYPTION: AES-256 (SIMULATED)", style = MaterialTheme.typography.labelSmall, color = TextGrey)
+                StarkStat("Version", "1.2.0")
+                Spacer(modifier = Modifier.height(12.dp))
+                StarkStat("Environment", "Production Mode")
+                Spacer(modifier = Modifier.height(12.dp))
+                StarkStat("Security", "Your data stays on device")
             }
-        }
-
-        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.BottomCenter) {
-            NeonText(text = "PROPERTY OF STARK INDUSTRIES", color = TextGrey.copy(alpha = 0.3f), style = MaterialTheme.typography.labelSmall)
         }
     }
 }

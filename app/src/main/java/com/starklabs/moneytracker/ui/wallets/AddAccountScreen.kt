@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.sharp.ArrowBack
-import androidx.compose.material.icons.sharp.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,13 +15,11 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.starklabs.moneytracker.data.Account
 import com.starklabs.moneytracker.data.MoneyRepository
-import com.starklabs.moneytracker.ui.components.NeonButton
-import com.starklabs.moneytracker.ui.components.NeonTextField
-import com.starklabs.moneytracker.ui.components.NeonText
-import com.starklabs.moneytracker.ui.theme.NeonCyan
-import com.starklabs.moneytracker.ui.theme.StarkBlack
+import com.starklabs.moneytracker.ui.components.StarkButton
+import com.starklabs.moneytracker.ui.theme.*
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddAccountScreen(
     navController: NavController,
@@ -33,59 +30,76 @@ fun AddAccountScreen(
     var balance by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("BANK") }
     var last4 by remember { mutableStateOf("") }
-    var colorHex by remember { mutableStateOf("#00B0FF") }
+    var colorHex by remember { mutableStateOf("#0A84FF") }
     
     val accountTypes = listOf("BANK", "CREDIT_CARD", "CASH", "UPI")
 
-    Box(modifier = Modifier.fillMaxSize().background(StarkBlack)) {
+    Scaffold(
+        containerColor = StarkBackground,
+        topBar = {
+            TopAppBar(
+                title = { Text("New Account", style = StarkTypography.titleLarge, color = TextPrimary) },
+                navigationIcon = {
+                    IconButton(onClick = { navController.popBackStack() }) {
+                        Icon(Icons.Sharp.ArrowBack, contentDescription = "Back", tint = TextPrimary)
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = StarkBackground)
+            )
+        }
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(paddingValues)
+                .padding(horizontal = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { navController.popBackStack() }) {
-                    Icon(Icons.Sharp.ArrowBack, contentDescription = "Back", tint = NeonCyan)
-                }
-                NeonText("NEW ACCOUNT", style = MaterialTheme.typography.headlineMedium)
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            NeonTextField(
+            val textFieldColors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = AccentSecondary,
+                unfocusedBorderColor = StarkBorder,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+                focusedContainerColor = StarkSurface,
+                unfocusedContainerColor = StarkSurface
+            )
+
+            OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = "Account Name (e.g. HDFC)",
-                modifier = Modifier.fillMaxWidth()
+                label = { Text("Account Name (e.g. HDFC)", color = TextSecondary) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
             )
             
             Spacer(modifier = Modifier.height(16.dp))
 
-            NeonTextField(
+            OutlinedTextField(
                 value = balance,
                 onValueChange = { balance = it },
-                label = "Initial Balance",
+                label = { Text("Initial Balance", color = TextSecondary) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
             )
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Type Selection (Simple Row for now)
+            // Type Selection
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 accountTypes.forEach { t ->
                      FilterChip(
                          selected = type == t,
                          onClick = { type = t },
-                         label = { Text(t, color = if(type==t) StarkBlack else NeonCyan) },
+                         label = { Text(t, color = if(type==t) StarkBlack else TextPrimary) },
                          colors = FilterChipDefaults.filterChipColors(
-                             selectedContainerColor = NeonCyan,
-                             containerColor = Color.Transparent,
-                             labelColor = NeonCyan
+                             selectedContainerColor = AccentPrimary,
+                             containerColor = StarkSurfaceVariant,
+                             labelColor = TextPrimary
                          )
                      )
                 }
@@ -93,17 +107,19 @@ fun AddAccountScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
 
-            NeonTextField(
+            OutlinedTextField(
                 value = last4,
                 onValueChange = { if (it.length <= 4) last4 = it },
-                label = "Last 4 Digits (for SMS)",
+                label = { Text("Last 4 Digits (for SMS tracking)", color = TextSecondary) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = textFieldColors,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            NeonButton(
+            StarkButton(
                 text = "INITIALIZE ACCOUNT",
                 onClick = {
                     if (name.isNotEmpty() && balance.isNotEmpty()) {
@@ -114,10 +130,10 @@ fun AddAccountScreen(
                                  balance = balance.toDoubleOrNull() ?: 0.0,
                                  maskedNumber = if (last4.isNotBlank()) last4 else null,
                                  colorHex = when(type) {
-                                     "BANK" -> "#FFD700" // Gold
-                                     "CREDIT_CARD" -> "#B3001B" // Red
-                                     "CASH" -> "#00B0FF" // Cyan
-                                     else -> "#00E6FF"
+                                     "BANK" -> "#FFD60A"
+                                     "CREDIT_CARD" -> "#FF453A"
+                                     "CASH" -> "#32D74B"
+                                     else -> "#0A84FF"
                                  }
                              )
                              repository.addAccount(account)
