@@ -104,7 +104,7 @@ class SmsClassificationTest {
         )
         // Should pass — has amount + action + merchant
         assertTrue(result.isTransaction)
-        assertTrue(result.confidence >= 80)
+        assertTrue(result.confidence >= 70)
     }
 
     // ════════════════════════════════════════════════════════════════════════

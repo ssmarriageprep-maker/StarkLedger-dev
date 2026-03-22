@@ -65,7 +65,8 @@ object SmsParser {
         "offer", "recharge", "validity", "ott", "xstream",
         "bill reminder", "bill due", "statement", "minimum due",
         "emi", "loan", "credit card offer", "cashback offer", "promo",
-        "otp", "verification code", "due by", "min payment", "minimum payment"
+        "otp", "verification code", "due by", "min payment", "minimum payment",
+        "invoice", "bill generated", "bill", "will be deducted"
     )
 
     // Telecom sender IDs — these ALONE trigger strong penalty
@@ -79,7 +80,7 @@ object SmsParser {
     private val ACTION_WORDS = listOf(
         "sent", "paid", "debited", "spent", "transferred", "transfer",
         "credited", "received", "payment", "withdrawn", "deducted",
-        "done", "made a payment"
+        "done", "made a payment", "successfully", "spent"
     )
     private val KNOWN_BANKS = listOf(
         "HDFC", "SBI", "ICICI", "AXIS", "KOTAK", "PNB", "IDFC", "YES", "CANARA", "FEDERAL", "UNION"
@@ -91,7 +92,7 @@ object SmsParser {
 
     private val DEBIT_KEYWORDS = setOf(
         "sent", "paid", "debited", "spent", "transfer", "transferred",
-        "withdrawn", "deducted", "made a payment", "done"
+        "withdrawn", "deducted", "made a payment"
     )
     private val CREDIT_KEYWORDS = setOf("credited", "received", "refund")
 
@@ -247,7 +248,9 @@ object SmsParser {
         val hasCurrency = CURRENCY_INDICATORS.any { body.contains(it, ignoreCase = true) }
         val hasMerchantKeyword = listOf("to ", "paid to", "transferred to", "sent to", " at ").any { lowerBody.contains(it) }
 
-        val hasTransactionSignals = hasAmount && (hasActionWord || hasAccountMask || hasBank)
+        // Higher order signals
+        val isMaskedAccount = ACCOUNT_MASK_PATTERN.matcher(body).find()
+        val hasTransactionSignals = hasAmount && (hasActionWord || isMaskedAccount || hasBank)
 
         // ── Rejection keyword check ─────────────────────────────────────
         val hasRejectKeyword = REJECT_PATTERN.matcher(body).find()
@@ -277,8 +280,8 @@ object SmsParser {
 
         // Penalties
         if (hasRejectKeyword) {
-            // Penalize less if keyword is present alongside strong transaction signals
-            score -= if (hasTransactionSignals) 10 else 30
+            // Penalize heavily if no bank name or masked account is present
+            score -= if (hasBank || isMaskedAccount) 15 else 40
         }
         if (isTelecomSender && !hasTransactionSignals) score -= 20
 
