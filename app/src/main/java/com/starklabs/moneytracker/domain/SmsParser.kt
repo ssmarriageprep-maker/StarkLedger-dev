@@ -18,6 +18,7 @@ enum class SmsPattern {
     WALLET_PAYMENT,
     NEFT_TRANSFER,
     ACH_DEBIT,
+    EMI_DEBIT,
     AUTOPAY_DEBIT,
     ATM_WITHDRAWAL,
     UNKNOWN
