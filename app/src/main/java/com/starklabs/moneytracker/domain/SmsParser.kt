@@ -542,53 +542,50 @@ object SmsParser {
         val lower = body.lowercase()
 
         // HDFC card spend: "Spent Rs.105 On HDFC Bank Card 6763 At"
+        // 1. Specially defined patterns (Strongest signals)
         if (HDFC_CARD_SPEND_PATTERN.matcher(body).find()) return SmsPattern.CARD_SPEND
-
-        // HDFC cardmember payment received: "PAYMENT OF Rs. 11493.00 RECEIVED TOWARDS YOUR CREDIT CARD"
         if (CARDMEMBER_PAYMENT_PATTERN.matcher(body).find()) return SmsPattern.CARD_PAYMENT_RECEIVED
+        if (CREDIT_ALERT_PATTERN.matcher(body).find()) return SmsPattern.BANK_CREDIT
+        if (UNION_BANK_PATTERN.matcher(body).find()) return SmsPattern.BANK_DEBIT
+        if (PLUXEE_SPEND_PATTERN.matcher(body).find()) return SmsPattern.WALLET_PAYMENT
 
-        // HDFC UPDATE: autopay / ACH / EMI debits
         if (HDFC_UPDATE_PATTERN.matcher(body).find()) {
             return when {
-                lower.contains("autopay") -> SmsPattern.AUTOPAY_DEBIT
-                lower.contains("ach") -> SmsPattern.ACH_DEBIT
+                lower.contains("autopay") || lower.contains("si-tad") -> SmsPattern.AUTOPAY_DEBIT
+                lower.contains("ach") || lower.contains("umrn") -> SmsPattern.ACH_DEBIT
+                lower.contains("emi") -> SmsPattern.EMI_DEBIT
                 else -> SmsPattern.BANK_DEBIT
             }
         }
 
-        // UPI patterns
+        // 2. Keyword-based specifics
         if (lower.contains("upi")) {
             return if (CREDIT_KEYWORDS.any { lower.contains(it) }) SmsPattern.UPI_RECEIVED
             else SmsPattern.UPI_SENT
         }
 
-        // ATM
         if (lower.contains("atm")) return SmsPattern.ATM_WITHDRAWAL
 
-        // NEFT / IMPS / RTGS
         if (lower.contains("neft") || lower.contains("imps") || lower.contains("rtgs")) {
             return SmsPattern.NEFT_TRANSFER
         }
 
-        // Card spend (generic)
+        if (lower.contains("wallet") || lower.contains("pluxee") || lower.contains("paytm") || 
+            lower.contains("phonepe") || lower.contains("gpay") || lower.contains("amazon pay")) {
+            return SmsPattern.WALLET_PAYMENT
+        }
+
+        if (lower.contains("autopay") || lower.contains("si-tad") || lower.contains("si-mad")) {
+            return SmsPattern.AUTOPAY_DEBIT
+        }
+        
+        if (lower.contains("umrn") || lower.contains("ach")) return SmsPattern.ACH_DEBIT
+
+        // 3. Generic Structure matches
         if (lower.contains("card") && (lower.contains("spent") || lower.contains("at "))) {
             return SmsPattern.CARD_SPEND
         }
 
-        // Wallet (Pluxee, Paytm, PhonePe, GPay)
-        if (lower.contains("wallet") || lower.contains("pluxee") || lower.contains("paytm") || lower.contains("phonepe") || lower.contains("gpay")) {
-            return SmsPattern.WALLET_PAYMENT
-        }
-
-        // ACH / UMRN deductions
-        if (lower.contains("umrn") || lower.contains("ach")) return SmsPattern.ACH_DEBIT
-
-        // Autopay
-        if (lower.contains("autopay") || lower.contains("si-tad") || lower.contains("si-mad")) {
-            return SmsPattern.AUTOPAY_DEBIT
-        }
-
-        // Generic bank debit / credit
         if (hasAction && hasBank) {
             return if (CREDIT_KEYWORDS.any { lower.contains(it) }) SmsPattern.BANK_CREDIT
             else SmsPattern.BANK_DEBIT
