@@ -120,7 +120,7 @@ object SmsParser {
     )
     // Handles: A/C *3263, A/c *3868, Acct XX1234, Card 6763, card ending 6763, card no.xx1322, xxxx1322
     private val ACCOUNT_PATTERN = Pattern.compile(
-        "(?:A/[Cc]|Acct|Account|Card ending|Card no\\.\\s*|Card)\\s*([*Xx]*[0-9]{2,})", Pattern.CASE_INSENSITIVE
+        "(?:A/[Cc]|Acct|Account|Card ending|Card no\\.\\s*|Card|Bank)\\s+[*Xx]*([0-9]{2,})", Pattern.CASE_INSENSITIVE
     )
 
     // Merchant patterns in PRIORITY ORDER (highest first)
@@ -240,7 +240,10 @@ object SmsParser {
 
         // ── Detect signals ──────────────────────────────────────────────
         val hasAmount = AMOUNT_STRICT.matcher(body).find() || AMOUNT_RELAXED.matcher(body).find()
-        val hasActionWord = ACTION_WORDS.any { body.contains(it, ignoreCase = true) }
+        val hasActionWord = ACTION_WORDS.any { 
+            // Word boundary match to avoid "prepaid" matching "paid"
+            Regex("\\b${it}\\b", RegexOption.IGNORE_CASE).containsMatchIn(body)
+        }
         val hasBank = KNOWN_BANKS.any { body.contains(it, ignoreCase = true) || sender.contains(it, ignoreCase = true) }
         val hasAccountMask = ACCOUNT_INDICATORS.any { body.contains(it, ignoreCase = true) } || ACCOUNT_MASK_PATTERN.matcher(body).find()
         val hasMethod = METHOD_INDICATORS.any { body.contains(it, ignoreCase = true) }
