@@ -66,7 +66,7 @@ object SmsParser {
         "bill reminder", "bill due", "statement", "minimum due",
         "emi", "loan", "credit card offer", "cashback offer", "promo",
         "otp", "verification code", "due by", "min payment", "minimum payment",
-        "invoice", "bill generated", "bill", "will be deducted"
+        "invoice", "bill generated", "will be deducted"
     )
 
     // Telecom sender IDs — these ALONE trigger strong penalty
@@ -92,7 +92,7 @@ object SmsParser {
 
     private val DEBIT_KEYWORDS = setOf(
         "sent", "paid", "debited", "spent", "transfer", "transferred",
-        "withdrawn", "deducted", "made a payment"
+        "withdrawn", "deducted", "made a payment", "done"
     )
     private val CREDIT_KEYWORDS = setOf("credited", "received", "refund")
 
@@ -252,18 +252,18 @@ object SmsParser {
         val isMaskedAccount = ACCOUNT_MASK_PATTERN.matcher(body).find()
         val hasTransactionSignals = hasAmount && (hasActionWord || isMaskedAccount || hasBank)
 
-        // ── Rejection keyword check ─────────────────────────────────────
-        val hasRejectKeyword = REJECT_PATTERN.matcher(body).find()
+        val isFutureTense = listOf("will be", "due on", "due by", "overdue").any { lowerBody.contains(it) }
+        val hasRejectKeyword = REJECT_PATTERN.matcher(body).find() || (lowerBody.contains("bill") && !hasActionWord)
         val isTelecomSender = TELECOM_SENDERS.any { lowerSender.contains(it) }
 
-        // 🚨 Smart rejection: reject ONLY if keyword present AND no transaction signals
-        if (hasRejectKeyword && !hasTransactionSignals) {
+        // 🚨 Smart rejection: reject if future tense OR (keyword present AND no bank/mask)
+        if (isFutureTense || (hasRejectKeyword && !(hasBank && isMaskedAccount))) {
             return ClassificationResult(
                 category = "non-transactional",
-                confidence = 10,
+                confidence = if (isFutureTense) 0 else 10,
                 patternDetected = false,
                 pattern = SmsPattern.UNKNOWN,
-                reason = "Promotional or non-bank message"
+                reason = if (isFutureTense) "Future-dated reminder" else "Promotional or non-bank message"
             )
         }
 
@@ -280,8 +280,8 @@ object SmsParser {
 
         // Penalties
         if (hasRejectKeyword) {
-            // Penalize heavily if no bank name or masked account is present
-            score -= if (hasBank || isMaskedAccount) 15 else 40
+            // Even if bank/mask is present, if it's a "bill" or "statement", it's usually not an expenditure
+            score -= if (hasBank && isMaskedAccount) 25 else 50
         }
         if (isTelecomSender && !hasTransactionSignals) score -= 20
 
