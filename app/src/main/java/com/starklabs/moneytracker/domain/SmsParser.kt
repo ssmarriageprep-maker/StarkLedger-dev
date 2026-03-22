@@ -62,11 +62,10 @@ object SmsParser {
 
     // ── Rejection keywords (used for penalty, NOT hard reject) ─────────────
     private val REJECT_KEYWORDS = listOf(
-        "offer", "recharge", "validity", "ott", "xstream",
+        "offer", "validity", "ott", "xstream",
         "bill reminder", "bill due", "statement", "minimum due",
-        "emi", "loan", "credit card offer", "cashback offer", "promo",
-        "otp", "verification code", "due by", "min payment", "minimum payment",
-        "invoice", "bill generated", "will be deducted"
+        "credit card offer", "cashback offer", "promo",
+        "otp", "verification code"
     )
 
     // Telecom sender IDs — these ALONE trigger strong penalty
@@ -253,7 +252,8 @@ object SmsParser {
         val hasTransactionSignals = hasAmount && (hasActionWord || isMaskedAccount || hasBank)
 
         val isFutureTense = listOf("will be", "due on", "due by", "overdue").any { lowerBody.contains(it) }
-        val hasRejectKeyword = REJECT_PATTERN.matcher(body).find() || (lowerBody.contains("bill") && !hasActionWord)
+        val promoKeywords = listOf("bill", "emi", "loan", "recharge", "invoice", "min payment", "statement")
+        val hasRejectKeyword = REJECT_PATTERN.matcher(body).find() || (promoKeywords.any { lowerBody.contains(it) } && !hasActionWord)
         val isTelecomSender = TELECOM_SENDERS.any { lowerSender.contains(it) }
 
         // 🚨 Smart rejection: reject if future tense OR (keyword present AND no bank/mask)
@@ -263,7 +263,7 @@ object SmsParser {
                 confidence = if (isFutureTense) 0 else 10,
                 patternDetected = false,
                 pattern = SmsPattern.UNKNOWN,
-                reason = if (isFutureTense) "Future-dated reminder" else "Promotional or non-bank message"
+                reason = "Promotional or non-bank message"
             )
         }
 
