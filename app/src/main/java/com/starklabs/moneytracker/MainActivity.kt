@@ -22,6 +22,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import com.starklabs.moneytracker.data.AppSettingsRepository
 import com.starklabs.moneytracker.sms.SmsScanner
 import androidx.compose.runtime.getValue
+import androidx.compose.foundation.layout.padding
+import androidx.navigation.compose.currentBackStackEntryAsState
 
 class MainActivity : AppCompatActivity() {
     private val smsPermissionLauncher = registerForActivityResult(
