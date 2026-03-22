@@ -41,10 +41,21 @@ class AnalyticsViewModel(private val repository: MoneyRepository) : ViewModel() 
         repository.allTransactions,
         repository.allCategories
     ) { transactions, categories ->
+        
+        val calendar = java.util.Calendar.getInstance()
+        calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        val startOfMonth = calendar.timeInMillis
+        
+        val currentMonthTransactions = transactions.filter { it.date >= startOfMonth }
+
         // 1. Process Pie Chart (By Category)
-        val categoryMap = transactions.filter { it.type == "DEBIT" }.groupBy { it.categoryId }
-        val totalDebit = transactions.filter { it.type == "DEBIT" }.sumOf { it.amount }
-        val totalCredit = transactions.filter { it.type == "CREDIT" }.sumOf { it.amount }
+        val categoryMap = currentMonthTransactions.filter { it.type == "DEBIT" }.groupBy { it.categoryId }
+        val totalDebit = currentMonthTransactions.filter { it.type == "DEBIT" }.sumOf { it.amount }
+        val totalCredit = currentMonthTransactions.filter { it.type == "CREDIT" }.sumOf { it.amount }
         
         val slices = categoryMap.mapNotNull { (catId, list) ->
             val category = categories.find { it.id == catId }

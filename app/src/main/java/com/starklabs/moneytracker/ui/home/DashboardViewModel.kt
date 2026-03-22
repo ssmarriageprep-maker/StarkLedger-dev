@@ -33,18 +33,30 @@ class DashboardViewModel(
     }
 
     val uiState: StateFlow<DashboardState> = combine(
-        repository.totalSpent,
-        repository.totalIncome,
+        repository.allAccounts,
         repository.allTransactions,
         repository.allCategories,
         appSettingsRepository.dashboardLogCount
-    ) { spent: Double?, income: Double?, transactions: List<Transaction>, categories: List<com.starklabs.moneytracker.data.Category>, logCount: Int ->
-        val s = spent ?: 0.0
-        val i = income ?: 0.0
-        val b = i - s
+    ) { accounts, transactions, categories, logCount ->
+        
+        // Total All-Time Balance
+        val totalBalance = accounts.sumOf { it.balance }
+        
+        // Monthly Calculations
+        val calendar = java.util.Calendar.getInstance()
+        calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
+        calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        calendar.set(java.util.Calendar.MINUTE, 0)
+        calendar.set(java.util.Calendar.SECOND, 0)
+        calendar.set(java.util.Calendar.MILLISECOND, 0)
+        val startOfMonth = calendar.timeInMillis
+        
+        val currentMonthTransactions = transactions.filter { it.date >= startOfMonth }
+        val s = currentMonthTransactions.filter { it.type == "DEBIT" }.sumOf { it.amount }
+        val i = currentMonthTransactions.filter { it.type == "CREDIT" }.sumOf { it.amount }
         
         // Calculate Total Budget dynamically from Categories
-        // Default to a reasonable fallback if no categories set, though we seed defaults.
+        // Default to a reasonable fallback if no categories set
         val totalBudget = categories.sumOf { it.budgetLimit }.takeIf { it > 0 } ?: 25000.0
         
         val progress = (s / totalBudget).coerceIn(0.0, 1.0).toFloat()
@@ -52,11 +64,12 @@ class DashboardViewModel(
         DashboardState(
             totalSpent = s,
             totalIncome = i,
-            balance = b,
+            balance = totalBalance,
             recentTransactions = transactions.take(logCount),
             budgetProgress = progress
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardState())
+
 }
 
 class DashboardViewModelFactory(

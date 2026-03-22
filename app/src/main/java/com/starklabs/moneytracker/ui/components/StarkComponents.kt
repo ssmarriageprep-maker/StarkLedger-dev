@@ -16,9 +16,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.starklabs.moneytracker.ui.theme.*
+import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.sharp.Home
+import androidx.compose.material.icons.sharp.PieChart
+import androidx.compose.material.icons.sharp.AccountBalanceWallet
+import androidx.compose.material.icons.sharp.Settings
+import com.starklabs.moneytracker.ui.Screen
+
 
 @Composable
 fun StarkCard(
@@ -167,4 +179,46 @@ fun TransactionRow(
 fun formatStarkDate(timestamp: Long): String {
     val sdf = java.text.SimpleDateFormat("dd MMM • HH:mm", java.util.Locale.getDefault())
     return sdf.format(java.util.Date(timestamp))
+}
+
+@Composable
+fun StarkBottomNavigationBar(navController: NavController) {
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    val items = listOf(
+        Pair(Screen.Dashboard.route, Pair(Icons.Sharp.Home, "Home")),
+        Pair(Screen.Analytics.route, Pair(Icons.Sharp.PieChart, "Insights")),
+        Pair(Screen.Wallets.route, Pair(Icons.Sharp.AccountBalanceWallet, "Wallets")),
+        Pair(Screen.Settings.route, Pair(Icons.Sharp.Settings, "Settings"))
+    )
+
+    NavigationBar(
+        containerColor = StarkSurface,
+        contentColor = TextPrimary,
+        tonalElevation = 8.dp
+    ) {
+        items.forEach { (route, iconAndLabel) ->
+            val (icon, label) = iconAndLabel
+            NavigationBarItem(
+                icon = { Icon(icon, contentDescription = label) },
+                label = { Text(label, style = StarkTypography.labelSmall) },
+                selected = currentRoute == route,
+                onClick = {
+                    navController.navigate(route) {
+                        popUpTo(Screen.Dashboard.route) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = StarkBackground,
+                    selectedTextColor = AccentPrimary,
+                    indicatorColor = AccentPrimary,
+                    unselectedIconColor = TextSecondary,
+                    unselectedTextColor = TextSecondary
+                )
+            )
+        }
+    }
 }

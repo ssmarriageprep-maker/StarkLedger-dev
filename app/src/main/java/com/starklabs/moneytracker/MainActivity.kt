@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import com.starklabs.moneytracker.data.AppSettingsRepository
 import com.starklabs.moneytracker.sms.SmsScanner
+import androidx.compose.runtime.getValue
 
 class MainActivity : AppCompatActivity() {
     private val smsPermissionLauncher = registerForActivityResult(
@@ -61,10 +62,30 @@ class MainActivity : AppCompatActivity() {
                 val dashboardViewModel = dashboardViewModelFactory.create(DashboardViewModel::class.java)
                 val securityViewModel = securityViewModelFactory.create(com.starklabs.moneytracker.ui.security.SecurityViewModel::class.java)
 
-                NavHost(navController = navController, startDestination = Screen.Security.route) {
-                    composable(Screen.Security.route) {
-                        com.starklabs.moneytracker.ui.security.SecurityScreen(navController, securityViewModel)
+                val navBackStackEntry by androidx.navigation.compose.currentBackStackEntryAsState()
+                val currentRoute = navBackStackEntry?.destination?.route
+                val mainScreens = listOf(Screen.Dashboard.route, Screen.Analytics.route, Screen.Wallets.route, Screen.Settings.route)
+                val showBottomNav = currentRoute in mainScreens
+
+                androidx.compose.material3.Scaffold(
+                    bottomBar = {
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = showBottomNav,
+                            enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }),
+                            exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { it })
+                        ) {
+                            com.starklabs.moneytracker.ui.components.StarkBottomNavigationBar(navController)
+                        }
                     }
+                ) { innerPadding ->
+                    NavHost(
+                        navController = navController, 
+                        startDestination = Screen.Security.route,
+                        modifier = androidx.compose.ui.Modifier.padding(innerPadding)
+                    ) {
+                        composable(Screen.Security.route) {
+                            com.starklabs.moneytracker.ui.security.SecurityScreen(navController, securityViewModel)
+                        }
                     composable(Screen.Dashboard.route) {
                         DashboardScreen(navController, dashboardViewModel)
                     }
@@ -92,6 +113,7 @@ class MainActivity : AppCompatActivity() {
                         val viewModel: com.starklabs.moneytracker.ui.history.HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
                         com.starklabs.moneytracker.ui.history.HistoryScreen(navController, viewModel)
                     }
+                }
                 }
             }
         }
