@@ -64,8 +64,9 @@ class MainActivity : AppCompatActivity() {
                 val dashboardViewModel = dashboardViewModelFactory.create(DashboardViewModel::class.java)
                 val securityViewModel = securityViewModelFactory.create(com.starklabs.moneytracker.ui.security.SecurityViewModel::class.java)
 
-                val navBackStackEntry by androidx.navigation.compose.currentBackStackEntryAsState()
+                val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
+
                 val mainScreens = listOf(Screen.Dashboard.route, Screen.Analytics.route, Screen.Wallets.route, Screen.Settings.route)
                 val showBottomNav = currentRoute in mainScreens
 
