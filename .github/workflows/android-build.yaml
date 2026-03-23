@@ -61,17 +61,12 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease
 
-      # 7) Create GitHub Release and Upload APKs
-      - name: Create Release
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-        uses: softprops/action-gh-release@v1
+      # 7) Upload APKs as Artifacts
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: v${{ github.run_number }}
-          name: Release v${{ github.run_number }}
-          draft: false
-          prerelease: false
-          files: |
+          name: starkledger-apks
+          path: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          retention-days: 7

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.starklabs.moneytracker.data.MoneyRepository
 import com.starklabs.moneytracker.data.Transaction
+import com.starklabs.moneytracker.data.Category
 import kotlinx.coroutines.flow.*
 import java.text.SimpleDateFormat
 import java.util.*
@@ -43,6 +44,14 @@ class HistoryViewModel(private val repository: MoneyRepository) : ViewModel() {
 
     fun onSearchQueryChange(newQuery: String) {
         _searchQuery.value = newQuery
+    }
+    
+    val categories: StateFlow<List<Category>> = repository.allCategories.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun updateTransactionCategory(transactionId: Int, newCategoryId: Int, merchant: String) {
+        viewModelScope.launch {
+            repository.updateTransactionCategory(transactionId, newCategoryId, merchant)
+        }
     }
 }
 

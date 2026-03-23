@@ -12,6 +12,10 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import com.starklabs.moneytracker.ui.components.*
 import com.starklabs.moneytracker.ui.theme.*
@@ -23,6 +27,40 @@ fun HistoryScreen(
     viewModel: HistoryViewModel
 ) {
     val state by viewModel.uiState.collectAsState()
+    val categories by viewModel.categories.collectAsState()
+    var transactionToEdit by remember { mutableStateOf<com.starklabs.moneytracker.data.Transaction?>(null) }
+    
+    if (transactionToEdit != null) {
+        AlertDialog(
+            onDismissRequest = { transactionToEdit = null },
+            title = { Text("Edit Category for ${transactionToEdit?.merchant}") },
+            text = {
+                LazyColumn {
+                    items(categories) { cat ->
+                        Text(
+                            text = cat.name,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    transactionToEdit?.let {
+                                        viewModel.updateTransactionCategory(it.id, cat.id, it.merchant)
+                                    }
+                                    transactionToEdit = null
+                                }
+                                .padding(16.dp),
+                            color = TextPrimary
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { transactionToEdit = null }) {
+                    Text("Cancel", color = AccentSecondary)
+                }
+            },
+            containerColor = StarkSurface
+        )
+    }
 
     Scaffold(
         containerColor = StarkBackground,
@@ -85,7 +123,7 @@ fun HistoryScreen(
                             MonthHeader(month)
                         }
                         items(transactions) { transaction ->
-                            TransactionRow(transaction = transaction)
+                            TransactionRow(transaction = transaction, onClick = { transactionToEdit = transaction })
                         }
                     }
                 }

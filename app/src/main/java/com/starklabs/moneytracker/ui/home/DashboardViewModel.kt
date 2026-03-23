@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import com.starklabs.moneytracker.data.AppSettingsRepository
+import com.starklabs.moneytracker.data.Category
 
 data class DashboardState(
     val totalSpent: Double = 0.0,
@@ -28,8 +29,15 @@ class DashboardViewModel(
     // Seed defaults on init (simplified for this demo)
     // Init block removed: Seeding is handled safely in Repository or should be triggered once by MainActivity if needed.
     // For now, we rely on Repository's safe check if called elsewhere, or just don't call it here to avoid startup lag.
-    init {
-        // No-op or remove completely. 
+    // No-op or remove completely. 
+    }
+
+    val categories: StateFlow<List<Category>> = repository.allCategories.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun updateTransactionCategory(transactionId: Int, newCategoryId: Int, merchant: String) {
+        viewModelScope.launch {
+            repository.updateTransactionCategory(transactionId, newCategoryId, merchant)
+        }
     }
 
     val uiState: StateFlow<DashboardState> = combine(

@@ -23,6 +23,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import com.starklabs.moneytracker.ui.Screen
 import com.starklabs.moneytracker.ui.components.*
@@ -34,6 +37,40 @@ fun DashboardScreen(
     viewModel: DashboardViewModel
 ) {
     val state by viewModel.uiState.collectAsState()
+    val categories by viewModel.categories.collectAsState()
+    var transactionToEdit by remember { mutableStateOf<com.starklabs.moneytracker.data.Transaction?>(null) }
+    
+    if (transactionToEdit != null) {
+        AlertDialog(
+            onDismissRequest = { transactionToEdit = null },
+            title = { Text("Edit Category for ${transactionToEdit?.merchant}") },
+            text = {
+                LazyColumn {
+                    items(categories) { cat ->
+                        Text(
+                            text = cat.name,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    transactionToEdit?.let {
+                                        viewModel.updateTransactionCategory(it.id, cat.id, it.merchant)
+                                    }
+                                    transactionToEdit = null
+                                }
+                                .padding(16.dp),
+                            color = TextPrimary
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { transactionToEdit = null }) {
+                    Text("Cancel", color = AccentSecondary)
+                }
+            },
+            containerColor = StarkSurface
+        )
+    }
 
     Scaffold(
         containerColor = StarkBackground,
@@ -95,26 +132,35 @@ fun DashboardScreen(
                             }
                             
                             // Budget Health Circle
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(80.dp)) {
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(90.dp)) {
                                 CircularProgressIndicator(
                                     progress = { 1f },
                                     modifier = Modifier.fillMaxSize(),
                                     color = StarkSurfaceVariant,
-                                    strokeWidth = 6.dp,
-                                    trackColor = Color.Transparent
+                                    strokeWidth = 8.dp,
+                                    trackColor = Color.Transparent,
+                                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                                 )
                                 CircularProgressIndicator(
                                     progress = { state.budgetProgress },
                                     modifier = Modifier.fillMaxSize(),
-                                    color = if (state.budgetProgress > 0.9f) ExpenseRed else AccentSecondary,
-                                    strokeWidth = 6.dp,
-                                    trackColor = Color.Transparent
+                                    color = if (state.budgetProgress > 0.9f) ExpenseRed else AccentPrimary,
+                                    strokeWidth = 8.dp,
+                                    trackColor = Color.Transparent,
+                                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                                 )
-                                Text(
-                                    text = "${(state.budgetProgress * 100).toInt()}%",
-                                    style = StarkTypography.labelLarge,
-                                    color = TextPrimary
-                                )
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(
+                                        text = "${(state.budgetProgress * 100).toInt()}%",
+                                        style = StarkTypography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                        color = TextPrimary
+                                    )
+                                    Text(
+                                        text = "Spent",
+                                        style = StarkTypography.labelSmall.copy(fontSize = 10.sp),
+                                        color = TextSecondary
+                                    )
+                                }
                             }
                         }
                     }
@@ -165,7 +211,7 @@ fun DashboardScreen(
                     }
                 } else {
                     items(state.recentTransactions) { t ->
-                        TransactionRow(transaction = t)
+                        TransactionRow(transaction = t, onClick = { transactionToEdit = t })
                     }
                 }
             }

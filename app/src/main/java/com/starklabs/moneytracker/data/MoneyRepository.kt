@@ -3,13 +3,15 @@ package com.starklabs.moneytracker.data
 import com.starklabs.moneytracker.data.AccountDao
 import com.starklabs.moneytracker.data.CategoryDao
 import com.starklabs.moneytracker.data.TransactionDao
+import com.starklabs.moneytracker.data.MerchantCategoryMappingDao
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 
 class MoneyRepository(
     private val transactionDao: TransactionDao,
     private val accountDao: AccountDao,
-    private val categoryDao: CategoryDao
+    private val categoryDao: CategoryDao,
+    private val merchantMappingDao: MerchantCategoryMappingDao
 ) {
     // Transactions
     val allTransactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
@@ -30,6 +32,17 @@ class MoneyRepository(
                 accountDao.deductBalance(transaction.accountId, transaction.amount)
             } else {
                 accountDao.addBalance(transaction.accountId, transaction.amount)
+            }
+        }
+    }
+
+    suspend fun updateTransactionCategory(transactionId: Int, newCategoryId: Int, merchant: String? = null) {
+        val allTx = transactionDao.getAllTransactionsOneShot()
+        val tx = allTx.find { it.id == transactionId }
+        if (tx != null) {
+            transactionDao.update(tx.copy(categoryId = newCategoryId))
+            if (merchant != null) {
+                merchantMappingDao.insertOrUpdate(com.starklabs.moneytracker.data.MerchantCategoryMapping(merchant.trim(), newCategoryId))
             }
         }
     }
@@ -55,19 +68,28 @@ class MoneyRepository(
     // Categories
     val allCategories: Flow<List<Category>> = categoryDao.getAllCategories()
     suspend fun addCategory(category: Category) = categoryDao.insert(category)
+    suspend fun updateCategory(category: Category) = categoryDao.insert(category) // insert with REPLACE acts as update
+    
     
     // Smart Category Matching
     suspend fun identifyCategory(merchant: String, body: String): Int? {
+        // 1. Check user-defined merchant mapping override
+        val override = merchantMappingDao.getMapping(merchant.trim())
+        if (override != null) {
+            return override.categoryId
+        }
+
         val categories = categoryDao.getAllCategoriesOneShot()
         val text = "$merchant $body".lowercase()
         
-        // 1. Check if merchant matches category name directly
-        categories.find { text.contains(it.name.lowercase()) }?.let { return it.id }
+        // 2. Check if merchant matches category name exactly
+        categories.find { text.contains(Regex("\\b${it.name.lowercase()}\\b")) }?.let { return it.id }
         
-        // 2. Check keywords
+        // 3. Check keywords with strict word boundaries
         categories.forEach { cat ->
             cat.keywords?.split(",")?.forEach { keyword ->
-                if (keyword.isNotBlank() && text.contains(keyword.trim().lowercase())) {
+                val kw = keyword.trim().lowercase()
+                if (kw.isNotBlank() && text.contains(Regex("\\b$kw\\b"))) {
                     return cat.id
                 }
             }

@@ -144,6 +144,60 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            val allCategories by repository.allCategories.collectAsState(initial = emptyList())
+            StarkCard(modifier = Modifier.fillMaxWidth()) {
+                Text(text = "Budget Customization", style = StarkTypography.titleMedium, color = TextPrimary)
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                if (allCategories.isEmpty()) {
+                    Text("Loading categories...", color = TextSecondary)
+                } else {
+                    allCategories.forEach { category ->
+                        var localBudget by remember(category.id) { mutableStateOf(category.budgetLimit.toInt().toString()) }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = category.name, style = StarkTypography.bodyMedium, color = TextPrimary, modifier = Modifier.weight(1f))
+                            
+                            OutlinedTextField(
+                                value = localBudget,
+                                onValueChange = { localBudget = it },
+                                modifier = Modifier.weight(1f).height(50.dp),
+                                textStyle = StarkTypography.bodyMedium.copy(color = TextPrimary),
+                                singleLine = true,
+                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = AccentPrimary,
+                                    unfocusedBorderColor = StarkBorder
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "SAVE",
+                                style = StarkTypography.labelSmall,
+                                color = AccentSecondary,
+                                modifier = Modifier.clickable {
+                                    val newBudget = localBudget.toDoubleOrNull()
+                                    if (newBudget != null && newBudget >= 0) {
+                                        scope.launch {
+                                            // Need a dedicated CategoryDao method, but repository doesn't expose it directly.
+                                            // Let's add updateCategory(category.copy(budgetLimit = newBudget)) to MoneyRepository.
+                                            repository.updateCategory(category.copy(budgetLimit = newBudget))
+                                            android.widget.Toast.makeText(context, "Budget Saved", android.widget.Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             StarkCard(modifier = Modifier.fillMaxWidth()) {
                 Text(text = "System Information", style = StarkTypography.titleMedium, color = TextPrimary)
                 Spacer(modifier = Modifier.height(12.dp))

@@ -25,7 +25,8 @@ class SmsReceiver : BroadcastReceiver() {
             val repository = MoneyRepository(
                 database.transactionDao(),
                 database.accountDao(),
-                database.categoryDao()
+                database.categoryDao(),
+                database.merchantMappingDao()
             )
             val scope = CoroutineScope(Dispatchers.IO)
 

@@ -107,6 +107,9 @@ interface TransactionDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(transaction: Transaction): Long
 
+    @Update
+    suspend fun update(transaction: Transaction)
+
     @Query("SELECT SUM(amount) FROM transactions WHERE type = 'DEBIT'")
     fun getTotalSpent(): Flow<Double?>
 
@@ -122,13 +125,33 @@ data class CategorySpending(
     val total: Double
 )
 
+@Entity(tableName = "merchant_mappings")
+data class MerchantCategoryMapping(
+    @PrimaryKey val merchantName: String, // Normalized merchant name
+    val categoryId: Int
+)
+
+@Dao
+interface MerchantCategoryMappingDao {
+    @Query("SELECT * FROM merchant_mappings WHERE merchantName = :merchantName COLLATE NOCASE")
+    suspend fun getMapping(merchantName: String): MerchantCategoryMapping?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrUpdate(mapping: MerchantCategoryMapping)
+}
+
 // ------------------- DATABASE -------------------
 
-@Database(entities = [Transaction::class, Account::class, Category::class], version = 3, exportSchema = false)
+@Database(
+    entities = [Transaction::class, Account::class, Category::class, MerchantCategoryMapping::class], 
+    version = 4, 
+    exportSchema = false
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun accountDao(): AccountDao
     abstract fun categoryDao(): CategoryDao
+    abstract fun merchantMappingDao(): MerchantCategoryMappingDao
 
     companion object {
         @Volatile
@@ -141,7 +164,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "moneytracker_db"
-                )
+                ).fallbackToDestructiveMigration()
                 .build()
                 INSTANCE = instance
                 instance

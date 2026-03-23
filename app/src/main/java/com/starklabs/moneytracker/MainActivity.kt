@@ -44,7 +44,8 @@ class MainActivity : AppCompatActivity() {
         repository = MoneyRepository(
             database.transactionDao(),
             database.accountDao(),
-            database.categoryDao()
+            database.categoryDao(),
+            database.merchantMappingDao()
         )
         val securityRepository = com.starklabs.moneytracker.data.SecurityRepository(this)
         appSettingsRepository = AppSettingsRepository(this)

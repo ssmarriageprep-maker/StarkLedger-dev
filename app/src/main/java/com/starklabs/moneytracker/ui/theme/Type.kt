@@ -6,56 +6,42 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// A clean, minimal typography prioritizing readability
+// Clean, minimalistic typography prioritizing readability (Pixel-Perfect Specs)
 val StarkTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
-        fontSize = 40.sp,
-        lineHeight = 48.sp,
+        fontSize = 30.sp, // Specification: 28-32sp for Balance
+        lineHeight = 36.sp,
         letterSpacing = (-1).sp,
         color = TextPrimary
     ),
     displayMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
-        fontSize = 32.sp,
-        lineHeight = 40.sp,
-        letterSpacing = (-0.5).sp,
-        color = TextPrimary
-    ),
-    headlineLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
         fontSize = 28.sp,
-        lineHeight = 36.sp,
-        color = TextPrimary
-    ),
-    headlineMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 22.sp,
-        lineHeight = 28.sp,
+        lineHeight = 34.sp,
+        letterSpacing = (-0.5).sp,
         color = TextPrimary
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Medium,
-        fontSize = 20.sp,
-        lineHeight = 26.sp,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 22.sp, // Specification: 20-22sp for Section Headers
+        lineHeight = 28.sp,
         color = TextPrimary
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Medium,
-        fontSize = 16.sp,
-        lineHeight = 24.sp,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 20.sp,
+        lineHeight = 26.sp,
         color = TextPrimary
     ),
     bodyLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Normal,
-        fontSize = 16.sp,
+        fontSize = 16.sp, // Specification: 14-16sp for Text
         lineHeight = 24.sp,
         color = TextPrimary
     ),
@@ -76,7 +62,7 @@ val StarkTypography = Typography(
     labelSmall = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Medium,
-        fontSize = 12.sp,
+        fontSize = 12.sp, // Specification: 12sp for Sub-labels
         lineHeight = 16.sp,
         letterSpacing = 0.5.sp,
         color = TextSecondary
