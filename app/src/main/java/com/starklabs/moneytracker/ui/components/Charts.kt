@@ -16,7 +16,7 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import com.starklabs.moneytracker.ui.analytics.Slice
-import com.starklabs.moneytracker.ui.theme.NeonCyan
+import com.starklabs.moneytracker.ui.theme.*
 import kotlin.math.cos
 import kotlin.math.sin
 
