@@ -24,18 +24,18 @@ import kotlin.math.sin
 fun AnimatedDonutChart(
     slices: List<Slice>,
     modifier: Modifier = Modifier,
-    animationDuration: Int = 1000
+    animationDuration: Int = 1200
 ) {
     var animationPlayed by remember { mutableStateOf(false) }
     val progress by animateFloatAsState(
         targetValue = if (animationPlayed) 1f else 0f,
-        animationSpec = tween(durationMillis = animationDuration, easing = FastOutSlowInEasing)
+        animationSpec = tween(durationMillis = animationDuration, easing = FastOutSlowInEasing),
+        label = "donut_progress"
     )
-    
-    // Additional rotation for dynamic feel
     val rotation by animateFloatAsState(
         targetValue = if (animationPlayed) 0f else -90f,
-        animationSpec = tween(durationMillis = animationDuration, easing = FastOutSlowInEasing)
+        animationSpec = tween(durationMillis = animationDuration, easing = FastOutSlowInEasing),
+        label = "donut_rotation"
     )
 
     LaunchedEffect(key1 = true) {
@@ -43,18 +43,39 @@ fun AnimatedDonutChart(
     }
 
     Canvas(modifier = modifier) {
-        val strokeWidth = 24.dp.toPx()
-        val radius = size.minDimension / 2 - strokeWidth
+        val strokeWidth = 14.dp.toPx()
+        val glowWidth = 24.dp.toPx()
+        val radius = size.minDimension / 2 - glowWidth
         val center = Offset(size.width / 2, size.height / 2)
-        var startAngle = -90f + rotation // Apply rotation
+        var startAngle = -90f + rotation
+
+        // Background Track
+        drawCircle(
+            color = StarkBorder.copy(alpha = 0.5f),
+            radius = radius,
+            center = center,
+            style = Stroke(width = strokeWidth)
+        )
 
         slices.forEach { slice ->
             val sweepAngle = slice.value * 360f * progress
             
+            // Soft Glow
+            drawArc(
+                color = slice.color.copy(alpha = 0.15f),
+                startAngle = startAngle,
+                sweepAngle = sweepAngle - 5f, 
+                useCenter = false,
+                topLeft = Offset(center.x - radius, center.y - radius),
+                size = Size(radius * 2, radius * 2),
+                style = Stroke(width = glowWidth, cap = StrokeCap.Round)
+            )
+
+            // Core Segment
             drawArc(
                 color = slice.color,
                 startAngle = startAngle,
-                sweepAngle = sweepAngle - 2f, // Gap for aesthetic
+                sweepAngle = sweepAngle - 5f, // More gap for elegant segmented aesthetic
                 useCenter = false,
                 topLeft = Offset(center.x - radius, center.y - radius),
                 size = Size(radius * 2, radius * 2),
@@ -62,18 +83,6 @@ fun AnimatedDonutChart(
             )
             startAngle += sweepAngle
         }
-        
-        // Inner tech details (thin rings)
-        drawCircle(
-            color = NeonCyan.copy(alpha = 0.1f * progress),
-            radius = radius - strokeWidth - 5.dp.toPx(),
-            style = Stroke(width = 1.dp.toPx())
-        )
-        drawCircle(
-            color = NeonCyan.copy(alpha = 0.05f * progress),
-            radius = radius + strokeWidth + 5.dp.toPx(),
-            style = Stroke(width = 1.dp.toPx())
-        )
     }
 }
 
