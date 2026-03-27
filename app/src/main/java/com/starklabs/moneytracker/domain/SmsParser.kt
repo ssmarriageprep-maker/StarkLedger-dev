@@ -82,6 +82,13 @@ object SmsParser {
         "credited", "received", "payment", "withdrawn", "deducted",
         "done", "made a payment", "successfully", "spent"
     )
+
+    // Pre-compiled pattern for all action words with word boundaries
+    private val ACTION_WORDS_PATTERN = Pattern.compile(
+        "\\b(?:" + ACTION_WORDS.distinct().joinToString("|") { Pattern.quote(it) } + ")\\b",
+        Pattern.CASE_INSENSITIVE
+    )
+
     private val KNOWN_BANKS = listOf(
         "HDFC", "SBI", "ICICI", "AXIS", "KOTAK", "PNB", "IDFC", "YES", "CANARA", "FEDERAL", "UNION"
     )
@@ -95,6 +102,18 @@ object SmsParser {
         "withdrawn", "deducted", "made a payment", "done"
     )
     private val CREDIT_KEYWORDS = setOf("credited", "received", "refund")
+
+    private val FUTURE_TENSE_PATTERN = Pattern.compile(
+        "\\b(?:will be|due on|due by|overdue)\\b", Pattern.CASE_INSENSITIVE
+    )
+
+    private val PROMO_KEYWORDS_PATTERN = Pattern.compile(
+        "\\b(?:bill|emi|loan|recharge|invoice|min payment|statement)\\b", Pattern.CASE_INSENSITIVE
+    )
+
+    private val MERCHANT_KEYWORD_PATTERN = Pattern.compile(
+        "(?:to |paid to|transferred to|sent to| at )", Pattern.CASE_INSENSITIVE
+    )
 
     // ── Compiled regex patterns ────────────────────────────────────────────
     // Strict amount: currency symbol followed by optional space then number
@@ -235,29 +254,25 @@ object SmsParser {
     // ════════════════════════════════════════════════════════════════════════
 
     internal fun classifyMessage(sender: String, body: String): ClassificationResult {
-        val lowerBody = body.lowercase()
         val lowerSender = sender.lowercase()
 
         // ── Detect signals ──────────────────────────────────────────────
         val hasAmount = AMOUNT_STRICT.matcher(body).find() || AMOUNT_RELAXED.matcher(body).find()
-        val hasActionWord = ACTION_WORDS.any { 
-            // Word boundary match to avoid "prepaid" matching "paid"
-            Regex("\\b${it}\\b", RegexOption.IGNORE_CASE).containsMatchIn(body)
-        }
+        val hasActionWord = ACTION_WORDS_PATTERN.matcher(body).find()
         val hasBank = KNOWN_BANKS.any { body.contains(it, ignoreCase = true) || sender.contains(it, ignoreCase = true) }
         val hasAccountMask = ACCOUNT_INDICATORS.any { body.contains(it, ignoreCase = true) } || ACCOUNT_MASK_PATTERN.matcher(body).find()
         val hasMethod = METHOD_INDICATORS.any { body.contains(it, ignoreCase = true) }
         val hasReference = REF_INDICATORS.any { body.contains(it, ignoreCase = true) } || REF_PATTERN.matcher(body).find()
         val hasCurrency = CURRENCY_INDICATORS.any { body.contains(it, ignoreCase = true) }
-        val hasMerchantKeyword = listOf("to ", "paid to", "transferred to", "sent to", " at ").any { lowerBody.contains(it) }
+        val hasMerchantKeyword = MERCHANT_KEYWORD_PATTERN.matcher(body).find()
 
         // Higher order signals
         val isMaskedAccount = ACCOUNT_MASK_PATTERN.matcher(body).find()
         val hasTransactionSignals = hasAmount && (hasActionWord || isMaskedAccount || hasBank)
 
-        val isFutureTense = listOf("will be", "due on", "due by", "overdue").any { lowerBody.contains(it) }
-        val promoKeywords = listOf("bill", "emi", "loan", "recharge", "invoice", "min payment", "statement")
-        val hasRejectKeyword = REJECT_PATTERN.matcher(body).find() || (promoKeywords.any { lowerBody.contains(it) } && !hasActionWord)
+        val isFutureTense = FUTURE_TENSE_PATTERN.matcher(body).find()
+        val hasRejectKeyword = REJECT_PATTERN.matcher(body).find() ||
+                             (PROMO_KEYWORDS_PATTERN.matcher(body).find() && !hasActionWord)
         val isTelecomSender = TELECOM_SENDERS.any { lowerSender.contains(it) }
 
         // 🚨 Smart rejection: reject if future tense OR (keyword present AND no bank/mask)
