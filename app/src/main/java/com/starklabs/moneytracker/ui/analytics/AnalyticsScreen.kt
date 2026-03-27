@@ -4,13 +4,15 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
-import androidx.compose.material.icons.sharp.ArrowBack
+import androidx.compose.material.icons.sharp.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,183 +35,195 @@ fun AnalyticsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     
-    // Add entrance animation trigger
-    var isLaunched by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) { isLaunched = true }
-    val entryAlpha by animateFloatAsState(if (isLaunched) 1f else 0f, tween(800), label = "alpha")
-    val entryOffset by animateFloatAsState(if (isLaunched) 0f else 40f, tween(800, easing = FastOutSlowInEasing), label = "offset")
-
     Scaffold(
-        containerColor = StarkBackground,
+        containerColor = SurfaceContainerLowest,
         topBar = {
-            TopAppBar(
-                title = { Text("Insights", style = StarkTypography.titleLarge.copy(fontWeight = FontWeight.Bold), color = TextPrimary) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Sharp.ArrowBack, contentDescription = "Back", tint = TextPrimary)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = StarkBackground)
+            StarkHeader(
+                title = "StarkLedger",
+                onSettingsClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Settings.route) }
             )
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(StarkBackground)
                 .padding(paddingValues)
                 .padding(horizontal = 24.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Hero Section
-            Box(
+            // Insight Banner
+            Surface(
+                color = SurfaceContainerLow,
+                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp)
-                    .offset(y = entryOffset.dp)
+                    .border(width = 1.dp, color = OutlineVariant.copy(alpha = 0.2f), shape = RoundedCornerShape(12.dp))
+                    .border(width = 2.dp, color = SecondaryContainer, shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 0.dp, bottomEnd = 0.dp))
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-                    Text("Spent This Month", style = StarkTypography.labelLarge, color = TextSecondary)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("₹${String.format("%,.0f", state.totalExpense)}", style = StarkTypography.headlineLarge.copy(fontSize = 42.sp, fontWeight = FontWeight.ExtraBold), color = TextPrimary)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    val balanceColor = if (state.totalIncome > state.totalExpense) IncomeGreen else ExpenseRed
-                    val symbol = if (state.totalIncome > state.totalExpense) "+" else ""
-                    val balance = state.totalIncome - state.totalExpense
-                    
-                    ContainerPill(color = balanceColor.copy(alpha = 0.15f)) {
+                Row(
+                    modifier = Modifier.padding(24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("WEEKLY PULSE", style = StarkTypography.labelSmall.copy(color = SecondaryContainer, fontWeight = FontWeight.SemiBold))
+                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Remaining: $symbol₹${String.format("%,.0f", balance)}",
-                            style = StarkTypography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = balanceColor
+                            text = "You spent 18% more this week",
+                            style = StarkTypography.headlineMedium.copy(fontSize = 28.sp, fontWeight = FontWeight.Bold),
+                            color = OnSurface
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Unusual spikes detected in the Travel category. Consider reviewing your last three bookings.",
+                            style = StarkTypography.bodyMedium,
+                            color = OnSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Surface(
+                        color = SurfaceContainerHigh,
+                        shape = CircleShape,
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Sharp.Lightbulb, contentDescription = null, tint = SecondaryContainer, modifier = Modifier.size(24.dp))
+                        }
                     }
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Beautiful Ring Chart
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(260.dp)
-                    .offset(y = entryOffset.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (state.pieSlices.isNotEmpty()) {
-                    AnimatedDonutChart(slices = state.pieSlices, modifier = Modifier.size(220.dp))
-                } else {
-                    Text("No data to display chart", style = StarkTypography.labelLarge, color = TextSecondary)
-                }
-                
-                // Center text for ring hole
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("Overview", style = StarkTypography.labelMedium, color = TextSecondary)
-                    Text(state.topCategory, style = StarkTypography.titleLarge.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(40.dp))
-            Text("Category Breakdown", style = StarkTypography.titleLarge.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (state.categoryPerformance.isNotEmpty()) {
-                state.categoryPerformance.forEachIndexed { index, perf ->
-                    CategoryAuditRow(perf)
+            // Main Grid
+            Row(modifier = Modifier.fillMaxWidth()) {
+                // Spending Velocity (Line Chart)
+                StarkCard(modifier = Modifier.weight(2f).height(400.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                        Column {
+                            Text("Spending Velocity", style = StarkTypography.titleLarge)
+                            Text("JAN 01 — JUN 30", style = StarkTypography.labelSmall)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("₹${String.format("%,.0f", state.totalExpense)}", style = StarkTypography.headlineSmall.copy(color = PrimaryContainer))
+                            Text("+4.2% GROWTH", style = StarkTypography.labelSmall.copy(color = Tertiary, fontSize = 10.sp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                        // Mock data for line chart
+                        GlowingLineChart(
+                            data = listOf(0.2f, 0.4f, 0.3f, 0.6f, 0.8f, 1.0f),
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        Surface(
+                            color = SurfaceContainerHighest,
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).border(width = 1.dp, color = PrimaryContainer.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp))
+                        ) {
+                            Text("PEAK JUNE: ₹3.2K", style = StarkTypography.labelSmall.copy(color = PrimaryContainer, fontSize = 8.sp), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                        }
+                    }
                     Spacer(modifier = Modifier.height(16.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        listOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN").forEach { month ->
+                            Text(month, style = StarkTypography.labelSmall.copy(fontSize = 10.sp))
+                        }
+                    }
                 }
-            } else {
-                Text("No categorized expenses yet.", style = StarkTypography.bodyMedium, color = TextSecondary)
+
+                Spacer(modifier = Modifier.width(24.dp))
+
+                // Composition (Pie Chart)
+                StarkCard(modifier = Modifier.weight(1f).height(400.dp)) {
+                    Text("Composition", style = StarkTypography.titleLarge)
+                    Text("BY PERCENTAGE", style = StarkTypography.labelSmall)
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Box(modifier = Modifier.size(160.dp).align(Alignment.CenterHorizontally), contentAlignment = Alignment.Center) {
+                        AnimatedDonutChart(slices = state.pieSlices, modifier = Modifier.fillMaxSize())
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("78%", style = StarkTypography.headlineMedium, color = OnSurface)
+                            Text("TRACKED", style = StarkTypography.labelSmall.copy(fontSize = 10.sp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Column {
+                        state.categoryPerformance.take(3).forEach { perf ->
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(perf.color))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(perf.name, style = StarkTypography.bodySmall, color = OnSurface)
+                                }
+                                Text("${(perf.percentage * 100).toInt()}%", style = StarkTypography.labelSmall)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                }
             }
             
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Category Comparison
+            Row(modifier = Modifier.fillMaxWidth()) {
+                StarkCard(modifier = Modifier.weight(1f)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Benchmarking", style = StarkTypography.titleLarge)
+                        Icon(Icons.Sharp.FilterList, contentDescription = null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Column {
+                        state.categoryPerformance.take(3).forEach { perf ->
+                            Column {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                                    Text(perf.name, style = StarkTypography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                                    Text("₹${String.format("%.0f", perf.spent)} / ₹${String.format("%.0f", perf.budget)} Budget", style = StarkTypography.labelSmall)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Box(modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape).background(SurfaceContainerHighest)) {
+                                    Box(modifier = Modifier.fillMaxWidth(perf.percentage.coerceIn(0f, 1f)).fillMaxHeight().clip(CircleShape).background(if (perf.percentage >= 1f) Error else PrimaryContainer))
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(24.dp))
+
+                // Timeline
+                StarkCard(modifier = Modifier.weight(1f)) {
+                    Text("Active Timeline", style = StarkTypography.titleLarge)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // Using a simple vertical line and items
+                        state.categoryPerformance.take(3).forEachIndexed { index, perf ->
+                            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(if(index==0) PrimaryContainer else SurfaceContainerHighest).border(width = 1.dp, color = PrimaryContainer.copy(alpha = 0.2f), shape = CircleShape), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Sharp.ShoppingBag, contentDescription = null, tint = if(index==0) OnPrimary else PrimaryContainer, modifier = Modifier.size(20.dp))
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Merchant ${index + 1}", style = StarkTypography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                                    Text("TODAY, 14:22", style = StarkTypography.labelSmall)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("-₹1,299.00", style = StarkTypography.headlineSmall.copy(fontSize = 18.sp))
+                                    Text("HARDWARE", style = StarkTypography.labelSmall)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(40.dp))
-        }
-    }
-}
-
-@Composable
-fun ContainerPill(color: Color, content: @Composable () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .background(color)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        content()
-    }
-}
-
-@Composable
-fun CategoryAuditRow(perf: CategoryPerformance) {
-    // Dynamic Icon Mapping based on typical substrings
-    val lowerName = perf.name.lowercase()
-    val icon = when {
-        "food" in lowerName || "din" in lowerName || "restaurant" in lowerName -> Icons.Rounded.Fastfood
-        "travel" in lowerName || "transport" in lowerName || "fuel" in lowerName -> Icons.Rounded.DirectionsCar
-        "shop" in lowerName || "cloth" in lowerName || "mall" in lowerName -> Icons.Rounded.ShoppingBag
-        "health" in lowerName || "med" in lowerName -> Icons.Rounded.MedicalServices
-        "grocery" in lowerName || "mart" in lowerName -> Icons.Rounded.LocalGroceryStore
-        "ent" in lowerName || "movie" in lowerName || "fun" in lowerName -> Icons.Rounded.Movie
-        "bill" in lowerName || "util" in lowerName || "pay" in lowerName -> Icons.Rounded.Receipt
-        "edu" in lowerName || "school" in lowerName -> Icons.Rounded.School
-        else -> Icons.Rounded.Category
-    }
-
-    val isOverBudget = perf.percentage >= 1f
-    val barColor = if (isOverBudget) ExpenseRed else perf.color
-
-    StarkCard(modifier = Modifier.fillMaxWidth(), contentPadding = PaddingValues(16.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Icon Badge
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(perf.color.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = perf.name, tint = perf.color, modifier = Modifier.size(24.dp))
-            }
-            
-            Spacer(modifier = Modifier.width(16.dp))
-            
-            Column(modifier = Modifier.weight(1f)) {
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(perf.name, style = StarkTypography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 16.sp), color = TextPrimary)
-                    Text("₹${String.format("%,.0f", perf.spent)}", style = StarkTypography.titleMedium.copy(fontWeight = FontWeight.Bold), color = TextPrimary)
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("${(perf.percentage * 100).toInt()}% Used", style = StarkTypography.labelSmall, color = if (isOverBudget) ExpenseRed else TextSecondary)
-                    Text("of ₹${String.format("%,.0f", perf.budget)}", style = StarkTypography.labelSmall, color = TextSecondary)
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-                
-                // Advanced Progress Bar
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(StarkSurfaceVariant)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(perf.percentage.coerceIn(0f, 1f))
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(50))
-                            .background(Brush.horizontalGradient(listOf(barColor.copy(alpha = 0.7f), barColor)))
-                    )
-                }
-            }
         }
     }
 }

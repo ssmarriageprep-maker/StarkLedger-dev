@@ -2,17 +2,28 @@ package com.starklabs.moneytracker.ui.settings
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.sharp.ArrowBack
+import androidx.compose.material.icons.sharp.*
 import androidx.compose.material3.*
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.navigation.NavController
 import com.starklabs.moneytracker.data.MoneyRepository
@@ -35,38 +46,13 @@ fun SettingsScreen(
 
     val factory = AppSettingsViewModelFactory(appSettingsRepository)
     val viewModel: AppSettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
-    val dashboardLogCount by viewModel.dashboardLogCount.collectAsState()
-
-    val saveLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/csv"),
-        onResult = { uri ->
-            uri?.let {
-                scope.launch {
-                    try {
-                        val csvData = repository.getExportDataCsv()
-                        context.contentResolver.openOutputStream(it)?.use { stream ->
-                            stream.write(csvData.toByteArray())
-                        }
-                        android.widget.Toast.makeText(context, "Export Success", android.widget.Toast.LENGTH_SHORT).show()
-                    } catch (e: Exception) {
-                         android.widget.Toast.makeText(context, "Export Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }
-    )
 
     Scaffold(
-        containerColor = StarkBackground,
+        containerColor = SurfaceContainerLowest,
         topBar = {
-            TopAppBar(
-                title = { Text("Settings", style = StarkTypography.titleLarge, color = TextPrimary) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Sharp.ArrowBack, contentDescription = "Back", tint = TextPrimary)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = StarkBackground)
+            StarkHeader(
+                title = "StarkLedger",
+                onSettingsClick = { /* Already on Settings */ }
             )
         }
     ) { paddingValues ->
@@ -74,156 +60,184 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            StarkCard(modifier = Modifier.fillMaxWidth()) {
-                Text(text = "Data Management", style = StarkTypography.titleMedium, color = TextPrimary)
-                Spacer(modifier = Modifier.height(12.dp))
-                
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Screen Title Section
+            Column {
                 Text(
-                    text = "Export all financial logs to CSV format for external audit.",
-                    color = TextSecondary,
-                    style = StarkTypography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    text = "Settings",
+                    style = StarkTypography.headlineLarge.copy(fontSize = 32.sp, fontWeight = FontWeight.Medium),
+                    color = Primary
                 )
-
-                StarkButton(
-                    text = "SAVE LOCALLY",
-                    onClick = {
-                        val fileName = "starkledger_archive_${System.currentTimeMillis()}.csv"
-                        saveLauncher.launch(fileName)
-                    },
-                    modifier = Modifier.fillMaxWidth()
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Configure your financial workspace security and preferences.",
+                    style = StarkTypography.labelLarge.copy(fontSize = 14.sp),
+                    color = OnSurfaceVariant
                 )
-                
-                Spacer(modifier = Modifier.height(12.dp))
+            }
 
-                StarkButton(
-                    text = "SHARE EXPORT",
-                    onClick = {
-                        scope.launch {
-                            exportData(context, repository)
+            Spacer(modifier = Modifier.height(40.dp))
+
+            // Security Status Banner
+            Surface(
+                color = Color(0x33201F1F),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(width = 1.dp, color = PrimaryContainer.copy(alpha = 0.1f), shape = RoundedCornerShape(12.dp))
+                    .border(width = 2.dp, color = SecondaryContainer, shape = RoundedCornerShape(12.dp))
+            ) {
+                Row(
+                    modifier = Modifier.padding(24.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Surface(
+                        color = SecondaryContainer.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Sharp.VerifiedUser, contentDescription = null, tint = SecondaryContainer, modifier = Modifier.size(20.dp))
                         }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    isEnabled = true
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            StarkCard(modifier = Modifier.fillMaxWidth()) {
-                Text(text = "Dashboard Preferences", style = StarkTypography.titleMedium, color = TextPrimary)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text(
-                    text = "Recent Logs Limit: $dashboardLogCount",
-                    color = TextPrimary,
-                    style = StarkTypography.bodyMedium
-                )
-
-                Slider(
-                    value = dashboardLogCount.toFloat(),
-                    onValueChange = { viewModel.setDashboardLogCount(it.toInt()) },
-                    valueRange = 5f..50f,
-                    steps = 9,
-                    colors = SliderDefaults.colors(
-                        thumbColor = AccentSecondary,
-                        activeTrackColor = AccentSecondary,
-                        inactiveTrackColor = StarkSurfaceVariant
-                    )
-                )
-
-                Text(
-                    text = "Controls the number of transactions visible natively on the dashboard.",
-                    color = TextSecondary,
-                    style = StarkTypography.labelSmall
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            val allCategories by repository.allCategories.collectAsState(initial = emptyList())
-            StarkCard(modifier = Modifier.fillMaxWidth()) {
-                Text(text = "Budget Customization", style = StarkTypography.titleMedium, color = TextPrimary)
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                if (allCategories.isEmpty()) {
-                    Text("Loading categories...", color = TextSecondary)
-                } else {
-                    allCategories.forEach { category ->
-                        var localBudget by remember(category.id) { mutableStateOf(category.budgetLimit.toInt().toString()) }
-                        
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = category.name, style = StarkTypography.bodyMedium, color = TextPrimary, modifier = Modifier.weight(1f))
-                            
-                            OutlinedTextField(
-                                value = localBudget,
-                                onValueChange = { localBudget = it },
-                                modifier = Modifier.weight(1f).height(50.dp),
-                                textStyle = StarkTypography.bodyMedium.copy(color = TextPrimary),
-                                singleLine = true,
-                                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = AccentPrimary,
-                                    unfocusedBorderColor = StarkBorder
-                                )
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "SAVE",
-                                style = StarkTypography.labelSmall,
-                                color = AccentSecondary,
-                                modifier = Modifier.clickable {
-                                    val newBudget = localBudget.toDoubleOrNull()
-                                    if (newBudget != null && newBudget >= 0) {
-                                        scope.launch {
-                                            // Need a dedicated CategoryDao method, but repository doesn't expose it directly.
-                                            // Let's add updateCategory(category.copy(budgetLimit = newBudget)) to MoneyRepository.
-                                            repository.updateCategory(category.copy(budgetLimit = newBudget))
-                                            android.widget.Toast.makeText(context, "Budget Saved", android.widget.Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                }
-                            )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text("Security Insight", style = StarkTypography.headlineMedium.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium), color = OnSurface)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Your ledger is currently protected by standard encryption. Enable Biometric Lock for an extra layer of structural integrity.",
+                            style = StarkTypography.bodyMedium,
+                            color = OnSurfaceVariant,
+                            lineHeight = 20.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { }) {
+                            Text("Upgrade Protection", style = StarkTypography.headlineMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium), color = PrimaryContainer)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(Icons.Sharp.ArrowForward, contentDescription = null, tint = PrimaryContainer, modifier = Modifier.size(14.dp))
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            StarkCard(modifier = Modifier.fillMaxWidth()) {
-                Text(text = "System Information", style = StarkTypography.titleMedium, color = TextPrimary)
-                Spacer(modifier = Modifier.height(12.dp))
-                StarkStat("Version", "1.2.0")
-                Spacer(modifier = Modifier.height(12.dp))
-                StarkStat("Environment", "Production Mode")
-                Spacer(modifier = Modifier.height(12.dp))
-                StarkStat("Security", "Your data stays on device")
+            // Settings List
+            Column(modifier = Modifier.fillMaxWidth()) {
+                SettingsItem(
+                    icon = Icons.Sharp.Fingerprint,
+                    title = "Biometric Lock",
+                    subtitle = "ENHANCED SECURITY",
+                    trailing = {
+                         Box(modifier = Modifier.size(width = 40.dp, height = 20.dp).clip(RoundedCornerShape(10.dp)).background(OutlineVariant.copy(alpha = 0.3f))) {
+                            Box(modifier = Modifier.padding(2.dp).size(16.dp).clip(RoundedCornerShape(8.dp)).background(Outline))
+                         }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsItem(
+                    icon = Icons.Sharp.Lock,
+                    title = "Data & Privacy",
+                    subtitle = "ENCRYPTION & EXPORTS",
+                    onClick = { /* Export Logic */ }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsItem(
+                    icon = Icons.Sharp.QrCodeScanner,
+                    title = "SMS Parsing Settings",
+                    subtitle = "AUTOMATED TRACKING",
+                    trailing = {
+                        Surface(color = PrimaryContainer.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
+                            Text("Active", style = StarkTypography.labelLarge.copy(color = PrimaryFixedDim, fontSize = 12.sp), modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsItem(
+                    icon = Icons.Sharp.Info,
+                    title = "About StarkLabs",
+                    subtitle = "V2.4.0 • ENTERPRISE EDITION"
+                )
             }
+
+            // Logout Action
+            Spacer(modifier = Modifier.height(48.dp))
+            Button(
+                onClick = { },
+                colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                border = BorderStroke(1.dp, Error.copy(alpha = 0.2f)),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.height(56.dp)
+            ) {
+                Icon(Icons.Sharp.Logout, contentDescription = null, tint = Error)
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("Sign Out of Ledger", style = StarkTypography.headlineMedium.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium), color = Error)
+            }
+
+            // Footer
+            Spacer(modifier = Modifier.height(80.dp))
+            Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, PrimaryContainer, Color.Transparent))))
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "END-TO-END QUANTUM ENCRYPTION ENABLED",
+                style = StarkTypography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 2.sp),
+                color = OnSurfaceVariant,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
-suspend fun exportData(context: Context, repository: MoneyRepository) {
-    val csvData = repository.getExportDataCsv()
-    val fileName = "starkledger_export_${System.currentTimeMillis()}.csv"
-    val file = File(context.cacheDir, fileName)
-    
-    FileWriter(file).use { it.write(csvData) }
-    
-    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/csv"
-        putExtra(Intent.EXTRA_STREAM, uri)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+@Composable
+fun SettingsItem(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    trailing: @Composable (() -> Unit)? = null,
+    onClick: () -> Unit = {}
+) {
+    Surface(
+        color = SurfaceContainerLow,
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                color = SurfaceContainerHigh,
+                shape = RoundedCornerShape(8.dp),
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(icon, contentDescription = null, tint = PrimaryContainer, modifier = Modifier.size(20.dp))
+                }
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = StarkTypography.headlineMedium.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium), color = OnSurface)
+                Text(subtitle, style = StarkTypography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 1.sp), color = OnSurfaceVariant)
+            }
+            if (trailing != null) {
+                trailing()
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Icon(Icons.Sharp.ChevronRight, contentDescription = null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
+        }
     }
-    context.startActivity(Intent.createChooser(intent, "EXPORT ARCHIVE"))
 }

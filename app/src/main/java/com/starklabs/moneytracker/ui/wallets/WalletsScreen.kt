@@ -1,136 +1,46 @@
 package com.starklabs.moneytracker.ui.wallets
 
 import android.content.Context
-import android.content.pm.PackageManager
-import android.provider.Telephony
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.sharp.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
-import com.starklabs.moneytracker.data.Account
 import com.starklabs.moneytracker.data.MoneyRepository
-import com.starklabs.moneytracker.ui.Screen
 import com.starklabs.moneytracker.ui.components.*
 import com.starklabs.moneytracker.ui.theme.*
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
     val accounts = repository.allAccounts
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun scanForAccounts(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val projection = arrayOf("address", "body", "date")
-            val cursor = context.contentResolver.query(
-                Telephony.Sms.Inbox.CONTENT_URI,
-                projection,
-                null,
-                null,
-                "date DESC LIMIT 500"
-            )
-
-            val sessionAccounts = mutableMapOf<String, Int>()
-            var transactionsCreated = 0
-            var messagesRejected = 0
-            var newAccountsCreated = 0
-            
-            cursor?.use {
-                val addressIdx = it.getColumnIndex("address")
-                val bodyIdx = it.getColumnIndex("body")
-                val dateIdx = it.getColumnIndex("date")
-                
-                while (it.moveToNext()) {
-                    try {
-                        val sender = it.getString(addressIdx) ?: "Unknown"
-                        val body = it.getString(bodyIdx) ?: continue
-                        val timestamp = it.getLong(dateIdx)
-                        
-                        val parsed = com.starklabs.moneytracker.domain.SmsParser.parseSms(sender, body, timestamp)
-                        
-                        if (parsed.isTransaction && parsed.accountLast4 != null) {
-                            val last4 = parsed.accountLast4!!
-                            
-                            var accountId = sessionAccounts[last4]
-                            if (accountId == null) {
-                                val existingAccount = repository.findAccountForSms(last4)
-                                if (existingAccount != null) {
-                                    accountId = existingAccount.id
-                                } else {
-                                    val bankName = parsed.bank ?: "Bank"
-                                    val newAccount = Account(
-                                        name = "$bankName - $last4",
-                                        type = "BANK",
-                                        balance = 0.0,
-                                        maskedNumber = last4,
-                                        colorHex = "#FFD700"
-                                    )
-                                    val id = repository.addAccount(newAccount)
-                                    accountId = id.toInt()
-                                    newAccountsCreated++
-                                }
-                                sessionAccounts[last4] = accountId
-                            }
-                            
-                            val amount = parsed.amount ?: 0.0
-                            if (amount > 0.0) {
-                                val merchant = parsed.merchant ?: "Unknown Merchant"
-                                val transactionType = parsed.transactionType?.uppercase() ?: "DEBIT"
-                                
-                                val transaction = com.starklabs.moneytracker.data.Transaction(
-                                    amount = amount,
-                                    merchant = merchant,
-                                    date = timestamp,
-                                    type = transactionType,
-                                    smsBody = body,
-                                    accountId = accountId,
-                                    categoryId = repository.identifyCategory(merchant, body)
-                                )
-                                
-                                repository.addTransaction(transaction)
-                                transactionsCreated++
-                            }
-                        } else {
-                            messagesRejected++
-                        }
-                    } catch (e: Exception) {
-                        android.util.Log.e("WalletsScan", "Error processing message", e)
-                    }
-                }
-            }
-            
-            withContext(Dispatchers.Main) {
-                val summary = "Scan Complete!\n" +
-                    "• Accounts Added: $newAccountsCreated\n" +
-                    "• Transactions Created: $transactionsCreated\n" +
-                    "• Messages Filtered: $messagesRejected"
-                Toast.makeText(context, summary, Toast.LENGTH_LONG).show()
-            }
-        }
-    }
+    val categories = repository.allCategories
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 }
 
 class WalletsViewModelFactory(private val repository: MoneyRepository) : ViewModelProvider.Factory {
@@ -150,127 +60,232 @@ fun WalletsScreen(
     viewModel: WalletsViewModel
 ) {
     val accounts by viewModel.accounts.collectAsState()
-    val context = LocalContext.current
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { isGranted ->
-            if (isGranted) {
-                viewModel.scanForAccounts(context)
-            } else {
-                Toast.makeText(context, "Permission Denied: Cannot scan SMS", Toast.LENGTH_SHORT).show()
-            }
-        }
-    )
+    val categories by viewModel.categories.collectAsState()
 
     Scaffold(
-        containerColor = StarkBackground,
+        containerColor = SurfaceContainerLowest,
         topBar = {
-            TopAppBar(
-                title = { Text("Accounts", style = StarkTypography.titleLarge, color = TextPrimary) },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Sharp.ArrowBack, contentDescription = "Back", tint = TextPrimary)
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED) {
-                             viewModel.scanForAccounts(context)
-                        } else {
-                             launcher.launch(android.Manifest.permission.READ_SMS)
-                        }
-                    }) {
-                       Icon(Icons.Sharp.Message, contentDescription = "Scan SMS", tint = AccentSecondary)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = StarkBackground)
+            StarkHeader(
+                title = "StarkLedger",
+                onSettingsClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Settings.route) }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { navController.navigate(Screen.AddAccount.route) },
-                containerColor = AccentPrimary,
-                contentColor = StarkBlack,
-                shape = CircleShape
-            ) {
-                Icon(Icons.Sharp.Add, contentDescription = "Add Account")
-            }
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 20.dp)
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-            if (accounts.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No accounts detected. Add manually or scan SMS.", color = TextSecondary, style = StarkTypography.bodyMedium)
-                }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(bottom = 100.dp)
+            // Header Section: Total Budget Overview
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Bottom
                 ) {
-                    items(accounts) { account ->
-                        AccountCard(account)
+                    Column {
+                        Text("CURRENT PERIOD STRATEGY", style = StarkTypography.labelSmall.copy(letterSpacing = 2.sp))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Budget Analysis", style = StarkTypography.headlineLarge.copy(fontSize = 40.sp, fontWeight = FontWeight.Bold), color = Primary)
+                    }
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("₹12,450.00", style = StarkTypography.headlineMedium.copy(fontSize = 28.sp, fontWeight = FontWeight.Medium), color = OnSurface)
+                        Text("TOTAL ALLOCATED", style = StarkTypography.labelSmall)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Global Progress Bar
+                Surface(
+                    color = SurfaceContainerLow,
+                    shape = RoundedCornerShape(100.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(80.dp)
+                                .background(Brush.horizontalGradient(listOf(PrimaryContainer.copy(alpha = 0.05f), Color.Transparent)))
+                        )
+                        Column(modifier = Modifier.padding(horizontal = 32.dp, vertical = 20.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Text("Monthly Utilization", style = StarkTypography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = OnSurfaceVariant)
+                                Text("68%", style = StarkTypography.headlineMedium.copy(color = PrimaryContainer, fontWeight = FontWeight.Bold))
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Box(modifier = Modifier.fillMaxWidth().height(12.dp).clip(CircleShape).background(SurfaceContainerHighest)) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.68f)
+                                        .fillMaxHeight()
+                                        .background(Brush.horizontalGradient(listOf(PrimaryFixedDim, PrimaryContainer)))
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("₹8,466 SPENT", style = StarkTypography.labelSmall.copy(fontSize = 10.sp, color = OnSurfaceVariant.copy(alpha = 0.6f)))
+                                Text("₹3,984 REMAINING", style = StarkTypography.labelSmall.copy(fontSize = 10.sp, color = OnSurfaceVariant.copy(alpha = 0.6f)))
+                            }
+                        }
                     }
                 }
             }
-        }
-    }
-}
 
-@Composable
-fun AccountCard(account: Account) {
-    val color = try { Color(android.graphics.Color.parseColor(account.colorHex)) } catch (e: Exception) { AccentSecondary }
-    
-    val icon = when (account.type) {
-        "CASH" -> Icons.Sharp.AccountBalanceWallet
-        "BANK" -> Icons.Sharp.AccountBalance
-        "CREDIT_CARD" -> Icons.Sharp.CreditCard
-        "UPI" -> Icons.Sharp.QrCode
-        else -> Icons.Sharp.AccountBalance
-    }
+            Spacer(modifier = Modifier.height(32.dp))
 
-    StarkCard(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .background(color.copy(alpha = 0.1f), shape = RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
+            // Warning Indicator Banner
+            Surface(
+                color = Color(0x33201F1F),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(width = 4.dp, color = SecondaryContainer, shape = RoundedCornerShape(topStart = 12.dp, topEnd = 0.dp, bottomStart = 12.dp, bottomEnd = 0.dp))
+            ) {
+                Row(
+                    modifier = Modifier.padding(20.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(24.dp))
-                }
-                
-                Spacer(modifier = Modifier.width(16.dp))
-                
-                Column {
-                    Text(text = account.name, color = TextPrimary, style = StarkTypography.titleMedium)
-                    Text(text = account.type, color = TextSecondary, style = StarkTypography.labelSmall)
-                    if (account.maskedNumber != null) {
-                        Text(text = "•••• ${account.maskedNumber}", color = TextSecondary, style = StarkTypography.labelSmall)
+                    Surface(color = SecondaryContainer.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), modifier = Modifier.size(40.dp)) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Sharp.Warning, contentDescription = null, tint = SecondaryContainer, modifier = Modifier.size(20.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Action Required", style = StarkTypography.headlineMedium.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold), color = OnSurface)
+                        Text(
+                            text = "Food budget will exceed in 3 days based on current spending velocity.",
+                            style = StarkTypography.bodySmall,
+                            color = OnSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Button(
+                        onClick = {},
+                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceContainerHighest),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.height(36.dp)
+                    ) {
+                        Text("ADJUST", style = StarkTypography.labelSmall.copy(color = OnSurface, fontWeight = FontWeight.Bold))
                     }
                 }
             }
-            
-            Column(horizontalAlignment = Alignment.End) {
-                Text(
-                    text = "₹${String.format("%,.2f", account.balance)}",
-                    color = if (account.balance < 0) ExpenseRed else TextPrimary,
-                    style = StarkTypography.titleLarge
-                )
-                Text(text = "Active", color = IncomeGreen, style = StarkTypography.labelSmall)
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Category Grid
+            val mockCategories = listOf(
+                Pair("Food & Dining", Pair(SecondaryContainer, 0.92f)),
+                Pair("Transport", Pair(PrimaryContainer, 0.45f)),
+                Pair("Leisure", Pair(TertiaryContainer, 0.12f)),
+                Pair("Utilities", Pair(Outline, 0.60f)),
+                Pair("Shopping", Pair(PrimaryContainer, 0.38f)),
+                Pair("Wellness", Pair(TertiaryContainer, 0.75f))
+            )
+
+            Column(modifier = Modifier.fillMaxWidth()) {
+                val rows = mockCategories.chunked(3)
+                rows.forEach { rowItems ->
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        rowItems.forEachIndexed { index, (name, props) ->
+                            val (color, progress) = props
+                            StarkCard(
+                                modifier = Modifier.weight(1f).padding(vertical = 12.dp),
+                                cornerRadius = 24.dp,
+                                contentPadding = PaddingValues(24.dp)
+                            ) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(12.dp), modifier = Modifier.size(48.dp)) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            CategoryIcon(name, tint = color, modifier = Modifier.size(24.dp))
+                                        }
+                                    }
+                                    Text("${(progress * 100).toInt()}%", style = StarkTypography.headlineSmall.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold), color = if (progress >= 0.9f) Error else color)
+                                }
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Text(name, style = StarkTypography.headlineMedium.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium), color = OnSurface)
+                                Text(if (progress >= 0.9f) "Critical Threshold Reached" else if (progress >= 0.7f) "On Projection" else "Healthy Maintenance", style = StarkTypography.labelLarge.copy(fontSize = 12.sp), color = OnSurfaceVariant)
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Box(modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(SurfaceContainerHighest)) {
+                                    Box(modifier = Modifier.fillMaxWidth(progress).fillMaxHeight().background(color))
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("₹${String.format("%.0f", 1200 * progress)} SPENT", style = StarkTypography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold))
+                                    Text("₹1,200 LIMIT", style = StarkTypography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold))
+                                }
+                            }
+                            if (index < rowItems.size - 1) {
+                                Spacer(modifier = Modifier.width(24.dp))
+                            }
+                        }
+                        // Handle incomplete row
+                        if (rowItems.size < 3) {
+                            repeat(3 - rowItems.size) {
+                                Spacer(modifier = Modifier.width(24.dp))
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
             }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // AI Strategy Insight Card
+            Surface(
+                color = Color(0x33201F1F),
+                shape = RoundedCornerShape(24.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(width = 2.dp, color = SecondaryContainer, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 0.dp, bottomEnd = 0.dp))
+            ) {
+                Row(modifier = Modifier.padding(32.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        color = SurfaceContainerHigh,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.size(width = 200.dp, height = 160.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.background(Brush.linearGradient(listOf(Color(0xFF001F24), Color(0xFF00363D))))) {
+                            Icon(Icons.Sharp.AutoAwesome, contentDescription = null, tint = SecondaryContainer.copy(alpha = 0.2f), modifier = Modifier.size(100.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(32.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Sharp.AutoAwesome, contentDescription = null, tint = SecondaryContainer, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("AI STRATEGY INSIGHT", style = StarkTypography.headlineSmall.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp), color = SecondaryContainer)
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Optimize Subscription Recurrence", style = StarkTypography.headlineLarge.copy(fontSize = 24.sp, fontWeight = FontWeight.Bold), color = OnSurface)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Our engine detected 4 overlapping streaming services. Consolidating these to a single family plan could reclaim ₹42.00/month, effectively covering your transport overages.",
+                            style = StarkTypography.bodyMedium,
+                            color = OnSurfaceVariant,
+                            lineHeight = 22.sp
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = {},
+                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.height(52.dp).padding(horizontal = 32.dp)
+                        ) {
+                            Text("Apply Optimization", style = StarkTypography.labelLarge.copy(color = OnPrimary, fontWeight = FontWeight.Bold))
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(100.dp))
         }
     }
 }

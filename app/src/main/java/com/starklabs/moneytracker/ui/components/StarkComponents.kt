@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
@@ -15,6 +16,7 @@ import androidx.compose.material.icons.sharp.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
@@ -29,35 +31,42 @@ import com.starklabs.moneytracker.ui.theme.*
 
 @Composable
 fun StarkHeader(
+    title: String = "StarkLedger",
+    onMenuClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
-            .padding(horizontal = 4.dp),
+            .height(64.dp)
+            .background(SurfaceContainerLow)
+            .padding(horizontal = 24.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // App branding with subtle gradient text effect could go here, but keeping it clean
-        Text(
-            text = "STARKLEDGER",
-            style = StarkTypography.titleLarge.copy(
-                fontSize = 20.sp,
-                letterSpacing = 1.sp,
-                fontWeight = FontWeight.ExtraBold
-            ),
-            color = TextPrimary
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onMenuClick, modifier = Modifier.size(24.dp)) {
+                Icon(Icons.Sharp.Menu, contentDescription = "Menu", tint = Primary)
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = title,
+                style = StarkTypography.headlineLarge.copy(
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-1).sp
+                ),
+                color = PrimaryContainer
+            )
+        }
         IconButton(
             onClick = onSettingsClick,
-            modifier = Modifier.size(48.dp)
+            modifier = Modifier.size(24.dp)
         ) {
             Icon(
                 Icons.Sharp.Settings,
                 contentDescription = "Settings",
-                modifier = Modifier.size(26.dp),
-                tint = TextSecondary
+                tint = Primary
             )
         }
     }
@@ -66,16 +75,15 @@ fun StarkHeader(
 @Composable
 fun StarkCard(
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(18.dp),
+    backgroundColor: Color = SurfaceContainerLow,
+    cornerRadius: androidx.compose.ui.unit.Dp = Dimen.cornerRadiusLarge,
+    contentPadding: PaddingValues = PaddingValues(Dimen.cardPadding),
     content: @Composable ColumnScope.() -> Unit
 ) {
     Surface(
-        modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, StarkBorder, RoundedCornerShape(20.dp)), // Glassmorphic Edge
-        color = StarkSurface.copy(alpha = 0.95f),
-        shadowElevation = 8.dp,
-        tonalElevation = 4.dp
+        modifier = modifier.clip(RoundedCornerShape(cornerRadius)),
+        color = backgroundColor,
+        shape = RoundedCornerShape(cornerRadius)
     ) {
         Column(modifier = Modifier.padding(contentPadding)) {
             content()
@@ -87,96 +95,30 @@ fun StarkCard(
 fun StarkClickableCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    contentPadding: PaddingValues = PaddingValues(18.dp),
+    backgroundColor: Color = SurfaceContainerLow,
+    cornerRadius: androidx.compose.ui.unit.Dp = Dimen.cornerRadiusLarge,
+    contentPadding: PaddingValues = PaddingValues(Dimen.cardPadding),
     content: @Composable ColumnScope.() -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(targetValue = if (isPressed) 0.97f else 1f, animationSpec = tween(150), label = "card_scale")
-    val alpha = if (isPressed) 0.8f else 0.95f
+    val scale by animateFloatAsState(targetValue = if (isPressed) 0.98f else 1f, animationSpec = tween(150), label = "card_scale")
 
     Surface(
         modifier = modifier
             .scale(scale)
-            .clip(RoundedCornerShape(20.dp))
-            .border(1.dp, StarkBorder, RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(cornerRadius))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick
             ),
-        color = StarkSurface.copy(alpha = alpha),
-        shadowElevation = if (isPressed) 2.dp else 8.dp,
-        tonalElevation = 4.dp
+        color = if (isPressed) SurfaceContainerHigh else backgroundColor,
+        shape = RoundedCornerShape(cornerRadius)
     ) {
         Column(modifier = Modifier.padding(contentPadding)) {
             content()
         }
-    }
-}
-
-@Composable
-fun StarkButton(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isEnabled: Boolean = true
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(targetValue = if (isPressed) 0.95f else 1f, animationSpec = tween(150), label = "button_scale")
-
-    val bgModifier = if (isEnabled) {
-        Modifier.background(Brush.horizontalGradient(listOf(GradientVioletStart, GradientVioletEnd)))
-    } else {
-        Modifier.background(StarkBorder)
-    }
-
-    Box(
-        modifier = modifier
-            .scale(scale)
-            .height(52.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .then(bgModifier)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = isEnabled,
-                onClick = onClick
-            )
-            .padding(horizontal = 24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            style = StarkTypography.labelLarge.copy(
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.5.sp,
-                color = if (isEnabled) Color.White else TextDisabled
-            )
-        )
-    }
-}
-
-@Composable
-fun StarkStat(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    valueColor: Color = TextPrimary
-) {
-    Column(modifier = modifier) {
-        Text(
-            text = label,
-            style = StarkTypography.labelSmall.copy(letterSpacing = 0.5.sp),
-            color = TextSecondary
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = value,
-            style = StarkTypography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            color = valueColor
-        )
     }
 }
 
@@ -187,64 +129,74 @@ fun TransactionRow(
     onClick: () -> Unit = {}
 ) {
     val isDebit = transaction.type == "DEBIT"
-    val amountColor = if (isDebit) TextPrimary else IncomeGreen
+    val amountColor = if (isDebit) OnSurface else TertiaryContainer
     val prefix = if (isDebit) "-" else "+"
 
-    StarkClickableCard(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 2.dp)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                // Circular Icon Box
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(if (isDebit) StarkSurfaceVariant else IncomeGreen.copy(alpha = 0.15f))
-                        .border(1.dp, if (isDebit) StarkBorder else IncomeGreen.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        transaction.merchant.take(1).uppercase(), 
-                        style = StarkTypography.titleMedium.copy(fontWeight = FontWeight.Bold), 
-                        color = if (isDebit) TextSecondary else IncomeGreen
-                    )
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column {
-                    Text(
-                        text = transaction.merchant,
-                        style = StarkTypography.bodyLarge.copy(color = TextPrimary, fontWeight = FontWeight.SemiBold),
-                        maxLines = 1
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = formatStarkDate(transaction.date),
-                        style = StarkTypography.labelSmall,
-                        color = TextSecondary
-                    )
-                }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            // Circular Icon Box
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(SurfaceContainerHighest),
+                contentAlignment = Alignment.Center
+            ) {
+                 Icon(
+                    imageVector = when(transaction.merchant.lowercase()) {
+                        "food", "dining" -> Icons.Sharp.Restaurant
+                        "shopping" -> Icons.Sharp.ShoppingBag
+                        "bills", "utilities" -> Icons.Sharp.Bolt
+                        "transport", "travel" -> Icons.Sharp.DirectionsCar
+                        "health", "wellness" -> Icons.Sharp.MedicalServices
+                        "salary", "income" -> Icons.Sharp.AccountBalanceWallet
+                        else -> Icons.Sharp.ReceiptLong
+                    },
+                    contentDescription = null,
+                    tint = OnSurfaceVariant,
+                    modifier = Modifier.size(20.dp)
+                )
             }
-            Text(
-                text = "$prefix₹${String.format("%,.0f", transaction.amount)}",
-                color = amountColor,
-                style = StarkTypography.titleMedium.copy(fontWeight = FontWeight.Bold)
-            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column {
+                Text(
+                    text = transaction.merchant,
+                    style = StarkTypography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                    color = OnSurface,
+                    maxLines = 1
+                )
+                Text(
+                    text = "${transaction.merchant} • ${formatStarkDate(transaction.date)}",
+                    style = StarkTypography.labelSmall,
+                    color = OnSurfaceVariant
+                )
+            }
         }
+        Text(
+            text = "$prefix₹${String.format("%,.2f", transaction.amount)}",
+            color = amountColor,
+            style = StarkTypography.titleMedium.copy(fontWeight = FontWeight.Bold)
+        )
     }
 }
 
 fun formatStarkDate(timestamp: Long): String {
-    val sdf = java.text.SimpleDateFormat("dd MMM • HH:mm", java.util.Locale.getDefault())
-    return sdf.format(java.util.Date(timestamp))
+    val sdf = java.text.SimpleDateFormat("dd MMM", java.util.Locale.getDefault())
+    val now = java.util.Calendar.getInstance()
+    val date = java.util.Calendar.getInstance().apply { timeInMillis = timestamp }
+
+    return when {
+        now.get(java.util.Calendar.DATE) == date.get(java.util.Calendar.DATE) -> "Today"
+        now.get(java.util.Calendar.DATE) - 1 == date.get(java.util.Calendar.DATE) -> "Yesterday"
+        else -> sdf.format(java.util.Date(timestamp))
+    }
 }
 
 @Composable
@@ -253,50 +205,123 @@ fun StarkBottomNavigationBar(navController: NavController) {
     val currentRoute = navBackStackEntry?.destination?.route
 
     val items = listOf(
-        Pair(Screen.Dashboard.route, Pair(Icons.Sharp.Home, "Home")),
-        Pair(Screen.Analytics.route, Pair(Icons.Sharp.PieChart, "Insights")),
-        Pair(Screen.Wallets.route, Pair(Icons.Sharp.AccountBalanceWallet, "Wallets")),
-        Pair(Screen.Settings.route, Pair(Icons.Sharp.Settings, "Settings"))
+        Triple(Screen.Dashboard.route, Icons.Sharp.GridView, "Home"),
+        Triple(Screen.Analytics.route, Icons.Sharp.Insights, "Analytics"),
+        Triple(Screen.History.route, Icons.Sharp.ReceiptLong, "History"),
+        Triple(Screen.Wallets.route, Icons.Sharp.AccountBalanceWallet, "Budget")
     )
 
-    NavigationBar(
-        containerColor = StarkSurfaceVariant, // Raised from background
-        contentColor = TextSecondary,
-        tonalElevation = 8.dp,
-        modifier = Modifier.offset(y = 1.dp) // Hide bottom border imperfection
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(80.dp)
+            .background(Color(0x991C1B1B)) // Glass effect background
+            .padding(bottom = 12.dp)
     ) {
-        items.forEach { (route, iconAndLabel) ->
-            val (icon, label) = iconAndLabel
-            val selected = currentRoute == route
-            NavigationBarItem(
-                icon = { 
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEach { (route, icon, label) ->
+                val selected = currentRoute == route
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (selected) PrimaryContainer.copy(alpha = 0.1f) else Color.Transparent)
+                        .clickable {
+                            navController.navigate(route) {
+                                popUpTo(Screen.Dashboard.route) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
                     Icon(
-                        icon, 
+                        imageVector = icon,
                         contentDescription = label,
-                        modifier = Modifier.size(if (selected) 28.dp else 24.dp)
-                    ) 
-                },
-                label = { 
-                    if (selected) {
-                        Text(label, style = StarkTypography.labelSmall.copy(fontWeight = FontWeight.Bold)) 
-                    }
-                },
-                selected = selected,
-                onClick = {
-                    navController.navigate(route) {
-                        popUpTo(Screen.Dashboard.route) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = AccentPrimary,
-                    selectedTextColor = AccentPrimary,
-                    indicatorColor = Color.Transparent, // Transparent so icon glows without pill
-                    unselectedIconColor = TextSecondary,
-                    unselectedTextColor = TextSecondary
-                )
-            )
+                        tint = if (selected) PrimaryContainer else OnSurfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Text(
+                        text = label,
+                        style = StarkTypography.labelSmall.copy(
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                            fontSize = 10.sp
+                        ),
+                        color = if (selected) PrimaryContainer else OnSurfaceVariant.copy(alpha = 0.4f)
+                    )
+                }
+            }
         }
+    }
+}
+
+@Composable
+fun CategoryIcon(categoryName: String?, modifier: Modifier = Modifier, tint: Color = OnSurfaceVariant) {
+    Icon(
+        imageVector = when(categoryName?.lowercase()) {
+            "food", "dining" -> Icons.Sharp.Restaurant
+            "shopping" -> Icons.Sharp.ShoppingBag
+            "bills", "utilities" -> Icons.Sharp.Bolt
+            "transport", "travel" -> Icons.Sharp.DirectionsCar
+            "health", "wellness" -> Icons.Sharp.MedicalServices
+            "salary", "income" -> Icons.Sharp.AccountBalanceWallet
+            else -> Icons.Sharp.ReceiptLong
+        },
+        contentDescription = categoryName,
+        tint = tint,
+        modifier = modifier
+    )
+}
+
+@Composable
+fun StarkStat(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    valueColor: Color = OnSurface
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = label,
+            style = StarkTypography.labelSmall,
+            color = OnSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = value,
+            style = StarkTypography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+            color = valueColor
+        )
+    }
+}
+
+@Composable
+fun StarkButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isEnabled: Boolean = true
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier.height(52.dp),
+        enabled = isEnabled,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = PrimaryContainer,
+            contentColor = OnPrimary,
+            disabledContainerColor = SurfaceContainerHigh,
+            disabledContentColor = OnSurfaceVariant
+        ),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Text(
+            text = text,
+            style = StarkTypography.labelLarge.copy(fontWeight = FontWeight.Bold)
+        )
     }
 }

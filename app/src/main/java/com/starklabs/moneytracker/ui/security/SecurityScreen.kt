@@ -1,16 +1,23 @@
 package com.starklabs.moneytracker.ui.security
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.sharp.Backspace
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.starklabs.moneytracker.ui.Screen
-import com.starklabs.moneytracker.ui.add.CleanKeypad
 import com.starklabs.moneytracker.ui.theme.*
 
 @Composable
@@ -44,11 +51,11 @@ fun SecurityScreen(navController: NavController, viewModel: SecurityViewModel) {
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(StarkBackground)) {
+    Box(modifier = Modifier.fillMaxSize().background(Background)) {
         if (isPinSet == null) {
             androidx.compose.material3.CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center),
-                color = AccentPrimary
+                color = PrimaryContainer
             )
         } else {
             val isSetupMode = isPinSet == false
@@ -62,7 +69,7 @@ fun SecurityScreen(navController: NavController, viewModel: SecurityViewModel) {
                 
                 Text(
                     text = if (error) "INCORRECT PIN" else if (isSetupMode) "CREATE PASSCODE" else "ENTER PASSCODE",
-                    color = if (error) ExpenseRed else TextPrimary,
+                    color = if (error) Error else OnSurface,
                     style = StarkTypography.headlineMedium
                 )
                 
@@ -75,7 +82,7 @@ fun SecurityScreen(navController: NavController, viewModel: SecurityViewModel) {
                             modifier = Modifier
                                 .size(24.dp)
                                 .background(
-                                    if (pin.length > i) AccentPrimary else StarkSurfaceVariant,
+                                    if (pin.length > i) PrimaryContainer else SurfaceVariant,
                                     androidx.compose.foundation.shape.CircleShape
                                 )
                         )
@@ -85,7 +92,7 @@ fun SecurityScreen(navController: NavController, viewModel: SecurityViewModel) {
                 Spacer(modifier = Modifier.height(64.dp))
 
                 Box(modifier = Modifier.padding(horizontal = 24.dp)) {
-                    CleanKeypad(
+                    SecurityKeypad(
                         onDigit = { 
                             if (pin.length < 4) {
                                 pin += it
@@ -111,8 +118,7 @@ fun SecurityScreen(navController: NavController, viewModel: SecurityViewModel) {
                         onBackspace = {
                             if (pin.isNotEmpty()) pin = pin.dropLast(1)
                             error = false
-                        },
-                        onDone = {} 
+                        }
                     )
                 }
             }
@@ -120,9 +126,51 @@ fun SecurityScreen(navController: NavController, viewModel: SecurityViewModel) {
             Text(
                 text = "Your data stays on device",
                 style = StarkTypography.labelSmall,
-                color = TextSecondary,
+                color = OnSurfaceVariant,
                 modifier = Modifier.align(Alignment.BottomCenter).padding(24.dp)
             )
+        }
+    }
+}
+
+@Composable
+fun SecurityKeypad(onDigit: (String) -> Unit, onBackspace: () -> Unit) {
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        val keys = listOf(
+            listOf("1", "2", "3"),
+            listOf("4", "5", "6"),
+            listOf("7", "8", "9"),
+            listOf("", "0", "backspace")
+        )
+
+        keys.forEach { row ->
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                row.forEach { key ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(64.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable(enabled = key.isNotEmpty()) {
+                                when (key) {
+                                    "backspace" -> onBackspace()
+                                    else -> if (key.isNotEmpty()) onDigit(key)
+                                }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (key == "backspace") {
+                            Icon(Icons.Sharp.Backspace, contentDescription = null, tint = OnSurface)
+                        } else if (key.isNotEmpty()) {
+                            Text(
+                                text = key,
+                                style = StarkTypography.headlineLarge.copy(fontWeight = FontWeight.Medium),
+                                color = OnSurface
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
