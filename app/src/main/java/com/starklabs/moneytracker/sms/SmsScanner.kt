@@ -8,6 +8,7 @@ import com.starklabs.moneytracker.data.MoneyRepository
 import com.starklabs.moneytracker.data.Transaction
 import com.starklabs.moneytracker.domain.SmsParser
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.withContext
 
 object SmsScanner {
@@ -26,6 +27,9 @@ object SmsScanner {
         var transactionsCreated = 0
         var messagesRejected = 0
         var newAccountsCreated = 0
+
+        // Pre-fetch categories once to avoid redundant DB queries in the loop
+        val categories = repository.allCategories.firstOrNull() ?: emptyList()
 
         cursor?.use {
             val addressIdx = it.getColumnIndex("address")
@@ -76,7 +80,7 @@ object SmsScanner {
                                 type = transactionType,
                                 smsBody = body,
                                 accountId = accountId,
-                                categoryId = repository.identifyCategory(merchant, body)
+                                categoryId = repository.identifyCategory(merchant, body, categories)
                             )
 
                             repository.addTransaction(transaction)

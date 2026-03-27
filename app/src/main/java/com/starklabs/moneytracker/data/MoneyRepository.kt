@@ -72,25 +72,40 @@ class MoneyRepository(
     
     
     // Smart Category Matching
-    suspend fun identifyCategory(merchant: String, body: String): Int? {
+    suspend fun identifyCategory(
+        merchant: String,
+        body: String,
+        preFetchedCategories: List<Category>? = null
+    ): Int? {
         // 1. Check user-defined merchant mapping override
         val override = merchantMappingDao.getMapping(merchant.trim())
         if (override != null) {
             return override.categoryId
         }
 
-        val categories = categoryDao.getAllCategoriesOneShot()
+        val categories = preFetchedCategories ?: categoryDao.getAllCategoriesOneShot()
+        if (categories.isEmpty()) return null
+
         val text = "$merchant $body".lowercase()
         
         // 2. Check if merchant matches category name exactly
-        categories.find { text.contains(Regex("\\b${it.name.lowercase()}\\b")) }?.let { return it.id }
+        categories.find {
+            // Using a simple contains check before doing regex if possible,
+            // or just use a more efficient way to match.
+            // For performance, we'll use a pre-compiled regex if we were to do this at scale,
+            // but since we are in a suspend function, we'll at least avoid redundant DB calls.
+            text.contains(it.name.lowercase()) &&
+            text.contains(Regex("\\b${it.name.lowercase()}\\b"))
+        }?.let { return it.id }
         
         // 3. Check keywords with strict word boundaries
         categories.forEach { cat ->
             cat.keywords?.split(",")?.forEach { keyword ->
                 val kw = keyword.trim().lowercase()
-                if (kw.isNotBlank() && text.contains(Regex("\\b$kw\\b"))) {
-                    return cat.id
+                if (kw.isNotBlank() && text.contains(kw)) {
+                    if (text.contains(Regex("\\b$kw\\b"))) {
+                        return cat.id
+                    }
                 }
             }
         }
