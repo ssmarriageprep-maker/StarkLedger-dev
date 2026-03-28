@@ -215,9 +215,24 @@ fun StarkBottomNavigationBar(navController: NavController) {
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp)
-            .background(Color(0x991C1B1B)) // Glass effect background
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC0E0E0E)))) // Deep fade
             .padding(bottom = 12.dp)
     ) {
+        // Blur background simulation
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0x991C1B1B))
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.15f), Color.Transparent)
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                )
+        )
         Row(
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.SpaceAround,

@@ -1,6 +1,10 @@
 package com.starklabs.moneytracker.ui.wallets
 
 import android.content.Context
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -132,6 +136,9 @@ fun WalletsScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
+        var visible by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { visible = true }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -142,6 +149,10 @@ fun WalletsScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             // Header Section: Total Budget Overview
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(800)) + slideInVertically(tween(800), initialOffsetY = { it / 2 })
+            ) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -201,10 +212,15 @@ fun WalletsScreen(
                     }
                 }
             }
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Warning Indicator Banner
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(1000)) + slideInVertically(tween(1000), initialOffsetY = { it / 2 })
+            ) {
             Surface(
                 color = Color(0x33201F1F),
                 shape = RoundedCornerShape(12.dp),
@@ -245,10 +261,15 @@ fun WalletsScreen(
                     }
                 }
             }
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Category Grid
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(1200)) + slideInVertically(tween(1200), initialOffsetY = { it / 2 })
+            ) {
             val mockCategories = listOf(
                 Pair("Food & Dining", Pair(SecondaryContainer, 0.92f)),
                 Pair("Transport", Pair(PrimaryContainer, 0.45f)),
@@ -314,10 +335,15 @@ fun WalletsScreen(
                     }
                 }
             }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             // AI Strategy Insight Card
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(1400)) + slideInVertically(tween(1400), initialOffsetY = { it / 2 })
+            ) {
             Surface(
                 color = Color(0x33201F1F),
                 shape = RoundedCornerShape(24.dp),
@@ -387,6 +413,7 @@ fun WalletsScreen(
                         }
                     }
                 }
+            }
             }
 
             Spacer(modifier = Modifier.height(100.dp))

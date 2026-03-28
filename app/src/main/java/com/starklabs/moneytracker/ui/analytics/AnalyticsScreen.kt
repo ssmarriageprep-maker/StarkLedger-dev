@@ -3,6 +3,10 @@ package com.starklabs.moneytracker.ui.analytics
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -44,6 +48,9 @@ fun AnalyticsScreen(
             )
         }
     ) { paddingValues ->
+        var visible by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { visible = true }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -54,6 +61,10 @@ fun AnalyticsScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Insight Banner
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(800)) + slideInVertically(tween(800), initialOffsetY = { it / 2 })
+            ) {
             Surface(
                 color = SurfaceContainerLow,
                 shape = RoundedCornerShape(12.dp),
@@ -94,10 +105,15 @@ fun AnalyticsScreen(
                     }
                 }
             }
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Main Grid
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(1000)) + slideInVertically(tween(1000), initialOffsetY = { it / 2 })
+            ) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 // Spending Velocity (Line Chart)
                 StarkCard(modifier = Modifier.weight(2f).height(400.dp)) {
@@ -168,10 +184,15 @@ fun AnalyticsScreen(
                     }
                 }
             }
+            }
             
             Spacer(modifier = Modifier.height(32.dp))
 
             // Category Comparison
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(1200)) + slideInVertically(tween(1200), initialOffsetY = { it / 2 })
+            ) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 StarkCard(modifier = Modifier.weight(1f)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -222,6 +243,7 @@ fun AnalyticsScreen(
                         }
                     }
                 }
+            }
             }
 
             Spacer(modifier = Modifier.height(40.dp))
