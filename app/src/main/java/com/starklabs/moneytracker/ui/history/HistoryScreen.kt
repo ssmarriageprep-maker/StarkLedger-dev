@@ -170,7 +170,8 @@ fun HistoryScreen(
                                             Text(
                                                 text = transaction.merchant,
                                                 style = StarkTypography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                                color = OnSurface
+                                                color = OnSurface,
+                                                maxLines = 2
                                             )
                                             Text("${formatStarkTime(transaction.date)}", style = StarkTypography.labelLarge.copy(fontSize = 12.sp), color = OnSurfaceVariant)
                                         }

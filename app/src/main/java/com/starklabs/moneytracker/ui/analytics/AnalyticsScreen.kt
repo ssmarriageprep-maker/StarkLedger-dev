@@ -60,23 +60,24 @@ fun AnalyticsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(width = 1.dp, color = OutlineVariant.copy(alpha = 0.2f), shape = RoundedCornerShape(12.dp))
-                    .border(width = 2.dp, color = SecondaryContainer, shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 0.dp, bottomEnd = 0.dp))
+                    .border(width = 2.dp, color = state.pulseColor, shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 0.dp, bottomEnd = 0.dp))
             ) {
                 Row(
                     modifier = Modifier.padding(24.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("WEEKLY PULSE", style = StarkTypography.labelSmall.copy(color = SecondaryContainer, fontWeight = FontWeight.SemiBold))
+                        Text("WEEKLY PULSE", style = StarkTypography.labelSmall.copy(color = state.pulseColor, fontWeight = FontWeight.SemiBold))
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "You spent 18% more this week",
-                            style = StarkTypography.headlineMedium.copy(fontSize = 28.sp, fontWeight = FontWeight.Bold),
-                            color = OnSurface
+                            text = state.pulseTitle,
+                            style = StarkTypography.headlineMedium.copy(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+                            color = OnSurface,
+                            lineHeight = 30.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Unusual spikes detected in the Travel category. Consider reviewing your last three bookings.",
+                            text = state.pulseDescription,
                             style = StarkTypography.bodyMedium,
                             color = OnSurfaceVariant
                         )
@@ -88,7 +89,7 @@ fun AnalyticsScreen(
                         modifier = Modifier.size(56.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Sharp.Lightbulb, contentDescription = null, tint = SecondaryContainer, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Sharp.Lightbulb, contentDescription = null, tint = state.pulseColor, modifier = Modifier.size(24.dp))
                         }
                     }
                 }
