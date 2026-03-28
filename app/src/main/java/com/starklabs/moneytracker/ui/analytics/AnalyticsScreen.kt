@@ -245,18 +245,18 @@ fun AnalyticsScreen(
                                     Text(java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(transaction.date)), style = StarkTypography.labelSmall.copy(fontSize = 9.sp))
                                 }
                                 
-                                // Category Icon with Timeline Line
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(if(isDebit) SurfaceContainerHighest else TertiaryContainer.copy(alpha = 0.2f)).border(width = 1.dp, color = OutlineVariant.copy(alpha = 0.2f), shape = CircleShape), contentAlignment = Alignment.Center) {
+                                    // Using category color for the background if it's not a debit (income)
+                                    Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(if(isDebit) SurfaceContainerHighest else transaction.categoryColor.copy(alpha = 0.2f)).border(width = 1.dp, color = OutlineVariant.copy(alpha = 0.2f), shape = CircleShape), contentAlignment = Alignment.Center) {
                                         Icon(
-                                            imageVector = when(transaction.merchant.lowercase()) {
-                                                "food" -> Icons.Sharp.Restaurant
+                                            imageVector = when(transaction.categoryName.lowercase()) {
+                                                "food", "dining" -> Icons.Sharp.Restaurant
                                                 "shopping" -> Icons.Sharp.ShoppingBag
                                                 "salary" -> Icons.Sharp.AccountBalanceWallet
+                                                "travel", "transport" -> Icons.Sharp.DirectionsCar
                                                 else -> Icons.Sharp.ReceiptLong
                                             }, 
                                             contentDescription = null, 
-                                            tint = if (isDebit) OnSurfaceVariant else TertiaryContainer, 
+                                            tint = if (isDebit) OnSurfaceVariant else transaction.categoryColor, 
                                             modifier = Modifier.size(20.dp)
                                         )
                                     }
@@ -270,7 +270,7 @@ fun AnalyticsScreen(
                                 // Merchant & Category
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(transaction.merchant, style = StarkTypography.bodyLarge.copy(fontWeight = FontWeight.Bold), maxLines = 1)
-                                    Text(transaction.category?.name ?: "UNCATEGORIZED", style = StarkTypography.labelSmall.copy(color = OnSurfaceVariant, letterSpacing = 0.5.sp))
+                                    Text(transaction.categoryName.uppercase(), style = StarkTypography.labelSmall.copy(color = OnSurfaceVariant, letterSpacing = 0.5.sp))
                                 }
                                 
                                 // Amount
