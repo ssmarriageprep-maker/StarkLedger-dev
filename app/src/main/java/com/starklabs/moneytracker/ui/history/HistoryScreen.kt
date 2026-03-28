@@ -152,7 +152,10 @@ fun HistoryScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
                                         Box(
                                             modifier = Modifier
                                                 .size(48.dp)
@@ -163,8 +166,13 @@ fun HistoryScreen(
                                             CategoryIcon(null, tint = PrimaryFixedDim, modifier = Modifier.size(24.dp))
                                         }
                                         Spacer(modifier = Modifier.width(16.dp))
-                                        Column {
-                                            Text(transaction.merchant, style = StarkTypography.bodyLarge.copy(fontWeight = FontWeight.Bold), color = OnSurface)
+                                        Column(modifier = Modifier.padding(end = 16.dp)) {
+                                            Text(
+                                                text = transaction.merchant,
+                                                style = StarkTypography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                                color = OnSurface,
+                                                maxLines = 2
+                                            )
                                             Text("${formatStarkTime(transaction.date)}", style = StarkTypography.labelLarge.copy(fontSize = 12.sp), color = OnSurfaceVariant)
                                         }
                                     }
@@ -213,7 +221,7 @@ fun HistoryScreen(
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
-                                    onClick = {},
+                                    onClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Analytics.route) },
                                     colors = ButtonDefaults.buttonColors(containerColor = SurfaceContainerHighest),
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.height(40.dp)

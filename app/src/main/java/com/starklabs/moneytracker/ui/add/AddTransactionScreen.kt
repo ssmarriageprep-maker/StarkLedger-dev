@@ -1,5 +1,10 @@
 package com.starklabs.moneytracker.ui.add
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -28,6 +35,7 @@ import com.starklabs.moneytracker.data.Transaction
 import com.starklabs.moneytracker.ui.components.*
 import com.starklabs.moneytracker.ui.theme.*
 import kotlinx.coroutines.launch
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,20 +44,63 @@ fun AddTransactionScreen(
     repository: MoneyRepository
 ) {
     val scope = rememberCoroutineScope()
-    var amountStr by remember { mutableStateOf("142.00") }
+    val haptic = LocalHapticFeedback.current
+    var amountStr by remember { mutableStateOf("0") }
     var selectedType by remember { mutableStateOf("DEBIT") } // DEBIT, CREDIT
     var selectedCategory by remember { mutableStateOf<Category?>(null) }
+    var note by remember { mutableStateOf("") }
+    var selectedDate by remember { mutableStateOf(System.currentTimeMillis()) }
     
-    val categories = remember {
-        listOf(
-            Category(id = 1, name = "Food", iconName = "restaurant", colorHex = "#00E6FF"),
-            Category(id = 2, name = "Travel", iconName = "commute", colorHex = "#BAC9CC"),
-            Category(id = 3, name = "Shop", iconName = "shopping_bag", colorHex = "#BAC9CC"),
-            Category(id = 4, name = "Groc.", iconName = "local_grocery_store", colorHex = "#BAC9CC"),
-            Category(id = 5, name = "Fun", iconName = "health_connect", colorHex = "#BAC9CC"),
-            Category(id = 6, name = "Health", iconName = "health_and_safety", colorHex = "#BAC9CC"),
-            Category(id = 7, name = "Bills", iconName = "home", colorHex = "#BAC9CC"),
-            Category(id = 8, name = "Other", iconName = "more_horiz", colorHex = "#BAC9CC")
+    val categories by repository.allCategories.collectAsState(initial = emptyList())
+
+    var showDatePicker by remember { mutableStateOf(false) }
+    var showNoteDialog by remember { mutableStateOf(false) }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDate)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    selectedDate = datePickerState.selectedDateMillis ?: selectedDate
+                    showDatePicker = false
+                }) { Text("SELECT", color = Primary) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("CANCEL", color = OnSurfaceVariant) }
+            },
+            colors = DatePickerDefaults.colors(containerColor = SurfaceContainer)
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (showNoteDialog) {
+        var tempNote by remember { mutableStateOf(note) }
+        AlertDialog(
+            onDismissRequest = { showNoteDialog = false },
+            title = { Text("Add Transaction Note", color = Primary) },
+            text = {
+                OutlinedTextField(
+                    value = tempNote,
+                    onValueChange = { tempNote = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Note") },
+                    textStyle = StarkTypography.bodyLarge.copy(color = OnSurface),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Primary,
+                        unfocusedBorderColor = OutlineVariant,
+                        cursorColor = Primary
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    note = tempNote
+                    showNoteDialog = false
+                }) { Text("DONE", color = Primary, fontWeight = FontWeight.Bold) }
+            },
+            containerColor = SurfaceContainer
         )
     }
 
@@ -119,7 +170,7 @@ fun AddTransactionScreen(
                 columns = GridCells.Fixed(4),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.fillMaxWidth().height(200.dp)
+                modifier = Modifier.fillMaxWidth().height(160.dp)
             ) {
                 items(categories) { category ->
                     val isSelected = selectedCategory?.id == category.id
@@ -128,7 +179,10 @@ fun AddTransactionScreen(
                             .clip(RoundedCornerShape(12.dp))
                             .background(if (isSelected) PrimaryContainer.copy(alpha = 0.1f) else SurfaceContainerLow)
                             .border(1.dp, if (isSelected) PrimaryContainer.copy(alpha = 0.2f) else Color.Transparent, RoundedCornerShape(12.dp))
-                            .clickable { selectedCategory = category }
+                            .clickable {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                selectedCategory = category
+                            }
                             .padding(vertical = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -163,11 +217,29 @@ fun AddTransactionScreen(
                                     .height(64.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .clickable {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                         when (key) {
-                                            "backspace" -> if (amountStr.isNotEmpty()) amountStr = amountStr.dropLast(1)
+                                            "backspace" -> {
+                                                if (amountStr.length > 1) {
+                                                    amountStr = amountStr.dropLast(1)
+                                                } else {
+                                                    amountStr = "0"
+                                                }
+                                            }
+                                            "." -> {
+                                                if (!amountStr.contains(".")) {
+                                                    amountStr += "."
+                                                }
+                                            }
                                             else -> {
-                                                if (amountStr == "142.00") amountStr = "" // Clear initial placeholder
-                                                if (amountStr.length < 10) amountStr += key
+                                                if (amountStr == "0") {
+                                                    amountStr = key
+                                                } else if (amountStr.length < 10) {
+                                                    // Handle 2 decimal places limit
+                                                    if (!amountStr.contains(".") || amountStr.substringAfter(".").length < 2) {
+                                                        amountStr += key
+                                                    }
+                                                }
                                             }
                                         }
                                     },
@@ -189,40 +261,59 @@ fun AddTransactionScreen(
             }
 
             // Secondary Fields
-            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { showDatePicker = true }
+                        .padding(vertical = 12.dp, horizontal = 8.dp)
+                ) {
                     Icon(Icons.Sharp.CalendarToday, contentDescription = null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("Today, 14 Mar", style = StarkTypography.bodyLarge, color = OnSurface)
+                    val sdf = java.text.SimpleDateFormat("dd MMM, yyyy", Locale.getDefault())
+                    Text(sdf.format(Date(selectedDate)), style = StarkTypography.bodyLarge, color = OnSurface)
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .clickable { showNoteDialog = true }
+                        .padding(vertical = 12.dp, horizontal = 8.dp)
+                ) {
                     Icon(Icons.Sharp.Notes, contentDescription = null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("Add note...", style = StarkTypography.bodyLarge, color = OnSurfaceVariant.copy(alpha = 0.4f))
+                    Text(
+                        if (note.isEmpty()) "Add note..." else note,
+                        style = StarkTypography.bodyLarge,
+                        color = if (note.isEmpty()) OnSurfaceVariant.copy(alpha = 0.4f) else OnSurface,
+                        maxLines = 1
+                    )
                 }
             }
 
             // Save Button
             Button(
                 onClick = {
-                    if (amountStr.isNotEmpty()) {
-                        val amount = amountStr.toDoubleOrNull() ?: 0.0
-                        if (amount > 0) {
-                            scope.launch {
-                                val defaultAccount = repository.getDefaultAccount()
-                                val accountId = defaultAccount?.id ?: 1
-                                val transaction = Transaction(
-                                    amount = amount,
-                                    merchant = selectedCategory?.name ?: "Expense",
-                                    date = System.currentTimeMillis(),
-                                    type = selectedType,
-                                    accountId = accountId,
-                                    categoryId = selectedCategory?.id
-                                )
-                                repository.addTransaction(transaction)
-                                navController.popBackStack()
-                            }
+                    val amount = amountStr.toDoubleOrNull() ?: 0.0
+                    if (amount > 0) {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        scope.launch {
+                            val defaultAccount = repository.getDefaultAccount()
+                            val accountId = defaultAccount?.id ?: 1
+                            val transaction = Transaction(
+                                amount = amount,
+                                merchant = selectedCategory?.name ?: "Manual Expense",
+                                date = selectedDate,
+                                type = selectedType,
+                                accountId = accountId,
+                                categoryId = selectedCategory?.id,
+                                notes = if (note.isEmpty()) null else note
+                            )
+                            repository.addTransaction(transaction)
+                            navController.popBackStack()
                         }
                     }
                 },

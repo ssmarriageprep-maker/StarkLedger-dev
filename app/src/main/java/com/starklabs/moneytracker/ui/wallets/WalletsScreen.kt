@@ -1,6 +1,10 @@
 package com.starklabs.moneytracker.ui.wallets
 
 import android.content.Context
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import androidx.navigation.NavController
 import com.starklabs.moneytracker.data.MoneyRepository
 import com.starklabs.moneytracker.ui.components.*
@@ -41,6 +46,15 @@ class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
 
     val categories = repository.allCategories
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun updateCategoryBudget(categoryId: Int, newLimit: Double) {
+        viewModelScope.launch {
+            val category = categories.value.find { it.id == categoryId }
+            category?.let {
+                repository.updateCategory(it.copy(budgetLimit = newLimit))
+            }
+        }
+    }
 }
 
 class WalletsViewModelFactory(private val repository: MoneyRepository) : ViewModelProvider.Factory {
@@ -61,6 +75,56 @@ fun WalletsScreen(
 ) {
     val accounts by viewModel.accounts.collectAsState()
     val categories by viewModel.categories.collectAsState()
+    var showAdjustBudgetDialog by remember { mutableStateOf(false) }
+    var categoryToAdjust by remember { mutableStateOf<com.starklabs.moneytracker.data.Category?>(null) }
+    var optimizationApplied by remember { mutableStateOf(false) }
+    var isOptimizing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    if (showAdjustBudgetDialog && categoryToAdjust != null) {
+        var newLimit by remember { mutableStateOf(categoryToAdjust!!.budgetLimit.toString()) }
+        AlertDialog(
+            onDismissRequest = { showAdjustBudgetDialog = false },
+            title = { Text("Adjust Budget: ${categoryToAdjust!!.name}", color = Primary) },
+            text = {
+                Column {
+                    Text("Enter new monthly limit for this category:", color = OnSurfaceVariant)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = newLimit,
+                        onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) newLimit = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Limit (₹)") },
+                        textStyle = StarkTypography.bodyLarge.copy(color = OnSurface),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primary,
+                            unfocusedBorderColor = OutlineVariant,
+                            cursorColor = Primary
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val limitValue = newLimit.toDoubleOrNull() ?: categoryToAdjust!!.budgetLimit
+                        viewModel.updateCategoryBudget(categoryToAdjust!!.id, limitValue)
+                        showAdjustBudgetDialog = false
+                    }
+                ) {
+                    Text("UPDATE", color = Primary, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAdjustBudgetDialog = false }) {
+                    Text("CANCEL", color = OnSurfaceVariant)
+                }
+            },
+            containerColor = SurfaceContainer
+        )
+    }
 
     Scaffold(
         containerColor = SurfaceContainerLowest,
@@ -69,8 +133,12 @@ fun WalletsScreen(
                 title = "StarkLedger",
                 onSettingsClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Settings.route) }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
+        var visible by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { visible = true }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -81,18 +149,26 @@ fun WalletsScreen(
             Spacer(modifier = Modifier.height(32.dp))
 
             // Header Section: Total Budget Overview
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(800)) + slideInVertically(tween(800), initialOffsetY = { it / 2 })
+            ) {
             Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Column {
                         Text("CURRENT PERIOD STRATEGY", style = StarkTypography.labelSmall.copy(letterSpacing = 2.sp))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Budget Analysis", style = StarkTypography.headlineLarge.copy(fontSize = 40.sp, fontWeight = FontWeight.Bold), color = Primary)
+                        Text(
+                            "Budget Analysis",
+                            style = StarkTypography.headlineLarge.copy(fontSize = 40.sp, fontWeight = FontWeight.Bold),
+                            color = Primary,
+                            lineHeight = 44.sp
+                        )
                     }
-                    Column(horizontalAlignment = Alignment.End) {
+                    Column(horizontalAlignment = Alignment.Start) {
                         Text("₹12,450.00", style = StarkTypography.headlineMedium.copy(fontSize = 28.sp, fontWeight = FontWeight.Medium), color = OnSurface)
                         Text("TOTAL ALLOCATED", style = StarkTypography.labelSmall)
                     }
@@ -136,10 +212,15 @@ fun WalletsScreen(
                     }
                 }
             }
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Warning Indicator Banner
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(1000)) + slideInVertically(tween(1000), initialOffsetY = { it / 2 })
+            ) {
             Surface(
                 color = Color(0x33201F1F),
                 shape = RoundedCornerShape(12.dp),
@@ -167,7 +248,11 @@ fun WalletsScreen(
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Button(
-                        onClick = {},
+                        onClick = {
+                            // Find Food category for this mock warning
+                            categoryToAdjust = categories.find { it.name.contains("Food", ignoreCase = true) }
+                            if (categoryToAdjust != null) showAdjustBudgetDialog = true
+                        },
                         colors = ButtonDefaults.buttonColors(containerColor = SurfaceContainerHighest),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.height(36.dp)
@@ -176,10 +261,15 @@ fun WalletsScreen(
                     }
                 }
             }
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Category Grid
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(1200)) + slideInVertically(tween(1200), initialOffsetY = { it / 2 })
+            ) {
             val mockCategories = listOf(
                 Pair("Food & Dining", Pair(SecondaryContainer, 0.92f)),
                 Pair("Transport", Pair(PrimaryContainer, 0.45f)),
@@ -196,29 +286,39 @@ fun WalletsScreen(
                         rowItems.forEachIndexed { index, (name, props) ->
                             val (color, progress) = props
                             StarkCard(
-                                modifier = Modifier.weight(1f).padding(vertical = 12.dp),
-                                cornerRadius = 24.dp,
-                                contentPadding = PaddingValues(24.dp)
+                                modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                                cornerRadius = 16.dp,
+                                contentPadding = PaddingValues(12.dp)
                             ) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(12.dp), modifier = Modifier.size(48.dp)) {
+                                    Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), modifier = Modifier.size(32.dp)) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            CategoryIcon(name, tint = color, modifier = Modifier.size(24.dp))
+                                            CategoryIcon(name, tint = color, modifier = Modifier.size(16.dp))
                                         }
                                     }
-                                    Text("${(progress * 100).toInt()}%", style = StarkTypography.headlineSmall.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold), color = if (progress >= 0.9f) Error else color)
+                                    Text("${(progress * 100).toInt()}%", style = StarkTypography.headlineSmall.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold), color = if (progress >= 0.9f) Error else color)
                                 }
-                                Spacer(modifier = Modifier.height(24.dp))
-                                Text(name, style = StarkTypography.headlineMedium.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium), color = OnSurface)
-                                Text(if (progress >= 0.9f) "Critical Threshold Reached" else if (progress >= 0.7f) "On Projection" else "Healthy Maintenance", style = StarkTypography.labelLarge.copy(fontSize = 12.sp), color = OnSurfaceVariant)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Box(modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(SurfaceContainerHighest)) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = name,
+                                    style = StarkTypography.headlineMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Medium),
+                                    color = OnSurface,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    text = if (progress >= 0.9f) "Critical" else if (progress >= 0.7f) "Projected" else "Healthy",
+                                    style = StarkTypography.labelLarge.copy(fontSize = 9.sp),
+                                    color = OnSurfaceVariant,
+                                    maxLines = 1
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(SurfaceContainerHighest)) {
                                     Box(modifier = Modifier.fillMaxWidth(progress).fillMaxHeight().background(color))
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("₹${String.format("%.0f", 1200 * progress)} SPENT", style = StarkTypography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold))
-                                    Text("₹1,200 LIMIT", style = StarkTypography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold))
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Text("₹${String.format("%.0f", 1200 * progress)}", style = StarkTypography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold))
+                                    Text("of ₹1,200", style = StarkTypography.labelSmall.copy(fontSize = 8.sp, color = OnSurfaceVariant))
                                 }
                             }
                             if (index < rowItems.size - 1) {
@@ -235,10 +335,15 @@ fun WalletsScreen(
                     }
                 }
             }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
             // AI Strategy Insight Card
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(1400)) + slideInVertically(tween(1400), initialOffsetY = { it / 2 })
+            ) {
             Surface(
                 color = Color(0x33201F1F),
                 shape = RoundedCornerShape(24.dp),
@@ -246,18 +351,18 @@ fun WalletsScreen(
                     .fillMaxWidth()
                     .border(width = 2.dp, color = SecondaryContainer, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 0.dp, bottomEnd = 0.dp))
             ) {
-                Row(modifier = Modifier.padding(32.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.padding(24.dp)) {
                     Surface(
                         color = SurfaceContainerHigh,
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.size(width = 200.dp, height = 160.dp)
+                        modifier = Modifier.fillMaxWidth().height(160.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.background(Brush.linearGradient(listOf(Color(0xFF001F24), Color(0xFF00363D))))) {
                             Icon(Icons.Sharp.AutoAwesome, contentDescription = null, tint = SecondaryContainer.copy(alpha = 0.2f), modifier = Modifier.size(100.dp))
                         }
                     }
-                    Spacer(modifier = Modifier.width(32.dp))
-                    Column(modifier = Modifier.weight(1f)) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Sharp.AutoAwesome, contentDescription = null, tint = SecondaryContainer, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
@@ -274,15 +379,41 @@ fun WalletsScreen(
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(
-                            onClick = {},
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer),
+                            onClick = {
+                                if (!optimizationApplied) {
+                                    isOptimizing = true
+                                    scope.launch {
+                                        kotlinx.coroutines.delay(2000L) // Artificial pulse for UX
+                                        // "Apply" by finding Transport category and adjusting it for the user
+                                        val transport = categories.find { it.name.contains("Transport", ignoreCase = true) }
+                                        transport?.let {
+                                            viewModel.updateCategoryBudget(it.id, it.budgetLimit + 42.0)
+                                        }
+                                        isOptimizing = false
+                                        optimizationApplied = true
+                                        snackbarHostState.showSnackbar("Optimization Applied: Transport budget optimized by ₹42.00")
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (optimizationApplied) TertiaryContainer else PrimaryContainer
+                            ),
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.height(52.dp).padding(horizontal = 32.dp)
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            enabled = !isOptimizing
                         ) {
-                            Text("Apply Optimization", style = StarkTypography.labelLarge.copy(color = OnPrimary, fontWeight = FontWeight.Bold))
+                            if (isOptimizing) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = OnPrimary, strokeWidth = 2.dp)
+                            } else {
+                                Text(
+                                    text = if (optimizationApplied) "Optimization Applied" else "Apply Optimization",
+                                    style = StarkTypography.labelLarge.copy(color = OnPrimary, fontWeight = FontWeight.Bold)
+                                )
+                            }
                         }
                     }
                 }
+            }
             }
 
             Spacer(modifier = Modifier.height(100.dp))
