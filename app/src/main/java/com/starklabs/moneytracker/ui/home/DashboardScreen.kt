@@ -112,7 +112,10 @@ fun DashboardScreen(
                         letterSpacing = 2.sp
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.Bottom) {
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    ) {
                         Text(
                             text = "₹",
                             style = StarkTypography.headlineLarge,
@@ -122,9 +125,12 @@ fun DashboardScreen(
                         )
                         Text(
                             text = String.format("%,.2f", state.balance),
-                            style = StarkTypography.displayLarge.copy(fontSize = 56.sp),
+                            style = StarkTypography.displayLarge.copy(
+                                fontSize = if (state.balance > 1000000) 40.sp else 56.sp
+                            ),
                             color = OnSurface,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1
                         )
                     }
                     Spacer(modifier = Modifier.height(16.dp))
@@ -156,15 +162,18 @@ fun DashboardScreen(
                     // Left Column: Income vs Expenses
                     Column(modifier = Modifier.weight(2f)) {
                         // Income Card
-                        StarkCard(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+                        StarkCard(modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("MONTHLY INCOME", style = StarkTypography.labelSmall)
                                 Box(modifier = Modifier.size(32.dp).clip(RoundedCornerShape(12.dp)).background(TertiaryContainer.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
                                     Icon(Icons.Sharp.ArrowDownward, contentDescription = null, tint = TertiaryContainer, modifier = Modifier.size(20.dp))
                                 }
                             }
-                            Spacer(modifier = Modifier.weight(1f))
-                            Text("₹${String.format("%,.0f", state.totalIncome)}", style = StarkTypography.headlineMedium)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "₹${String.format("%,.0f", state.totalIncome)}",
+                                style = StarkTypography.headlineMedium.copy(fontSize = if (state.totalIncome > 1000000) 20.sp else 24.sp)
+                            )
                             Spacer(modifier = Modifier.height(24.dp))
                             Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(SurfaceContainerHigh)) {
                                 Box(modifier = Modifier.fillMaxWidth().fillMaxHeight().background(TertiaryContainer))
@@ -174,15 +183,18 @@ fun DashboardScreen(
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // Expense Card
-                        StarkCard(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+                        StarkCard(modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("MONTHLY EXPENSES", style = StarkTypography.labelSmall)
                                 Box(modifier = Modifier.size(32.dp).clip(RoundedCornerShape(12.dp)).background(Error.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
                                     Icon(Icons.Sharp.ArrowUpward, contentDescription = null, tint = Error, modifier = Modifier.size(20.dp))
                                 }
                             }
-                            Spacer(modifier = Modifier.weight(1f))
-                            Text("₹${String.format("%,.0f", state.totalSpent)}", style = StarkTypography.headlineMedium)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "₹${String.format("%,.0f", state.totalSpent)}",
+                                style = StarkTypography.headlineMedium.copy(fontSize = if (state.totalSpent > 1000000) 20.sp else 24.sp)
+                            )
                             Spacer(modifier = Modifier.height(24.dp))
                             Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(SurfaceContainerHigh)) {
                                 Box(modifier = Modifier.fillMaxWidth(state.budgetProgress.coerceIn(0f, 1f)).fillMaxHeight().background(Error))
@@ -193,7 +205,7 @@ fun DashboardScreen(
                     Spacer(modifier = Modifier.width(24.dp))
 
                     // Right Column: Budget Health
-                    StarkCard(modifier = Modifier.weight(1f).height(336.dp)) {
+                    StarkCard(modifier = Modifier.weight(1f).heightIn(min = 336.dp)) {
                         Text("Budget Health", style = StarkTypography.titleMedium)
                         Spacer(modifier = Modifier.weight(1f))
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(128.dp).align(Alignment.CenterHorizontally)) {

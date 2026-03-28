@@ -165,15 +165,15 @@ fun TransactionRow(
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
+            Column(modifier = Modifier.padding(end = 16.dp)) {
                 Text(
                     text = transaction.merchant,
                     style = StarkTypography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                     color = OnSurface,
-                    maxLines = 1
+                    maxLines = 2
                 )
                 Text(
-                    text = "${transaction.merchant} • ${formatStarkDate(transaction.date)}",
+                    text = formatStarkDate(transaction.date),
                     style = StarkTypography.labelSmall,
                     color = OnSurfaceVariant
                 )

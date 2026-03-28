@@ -82,17 +82,21 @@ fun WalletsScreen(
 
             // Header Section: Total Budget Overview
             Column(modifier = Modifier.fillMaxWidth()) {
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.Bottom
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Column {
                         Text("CURRENT PERIOD STRATEGY", style = StarkTypography.labelSmall.copy(letterSpacing = 2.sp))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Budget Analysis", style = StarkTypography.headlineLarge.copy(fontSize = 40.sp, fontWeight = FontWeight.Bold), color = Primary)
+                        Text(
+                            "Budget Analysis",
+                            style = StarkTypography.headlineLarge.copy(fontSize = 40.sp, fontWeight = FontWeight.Bold),
+                            color = Primary,
+                            lineHeight = 44.sp
+                        )
                     }
-                    Column(horizontalAlignment = Alignment.End) {
+                    Column(horizontalAlignment = Alignment.Start) {
                         Text("₹12,450.00", style = StarkTypography.headlineMedium.copy(fontSize = 28.sp, fontWeight = FontWeight.Medium), color = OnSurface)
                         Text("TOTAL ALLOCATED", style = StarkTypography.labelSmall)
                     }
@@ -196,29 +200,39 @@ fun WalletsScreen(
                         rowItems.forEachIndexed { index, (name, props) ->
                             val (color, progress) = props
                             StarkCard(
-                                modifier = Modifier.weight(1f).padding(vertical = 12.dp),
-                                cornerRadius = 24.dp,
-                                contentPadding = PaddingValues(24.dp)
+                                modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                                cornerRadius = 16.dp,
+                                contentPadding = PaddingValues(12.dp)
                             ) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(12.dp), modifier = Modifier.size(48.dp)) {
+                                    Surface(color = color.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), modifier = Modifier.size(32.dp)) {
                                         Box(contentAlignment = Alignment.Center) {
-                                            CategoryIcon(name, tint = color, modifier = Modifier.size(24.dp))
+                                            CategoryIcon(name, tint = color, modifier = Modifier.size(16.dp))
                                         }
                                     }
-                                    Text("${(progress * 100).toInt()}%", style = StarkTypography.headlineSmall.copy(fontSize = 14.sp, fontWeight = FontWeight.Bold), color = if (progress >= 0.9f) Error else color)
+                                    Text("${(progress * 100).toInt()}%", style = StarkTypography.headlineSmall.copy(fontSize = 12.sp, fontWeight = FontWeight.Bold), color = if (progress >= 0.9f) Error else color)
                                 }
-                                Spacer(modifier = Modifier.height(24.dp))
-                                Text(name, style = StarkTypography.headlineMedium.copy(fontSize = 18.sp, fontWeight = FontWeight.Medium), color = OnSurface)
-                                Text(if (progress >= 0.9f) "Critical Threshold Reached" else if (progress >= 0.7f) "On Projection" else "Healthy Maintenance", style = StarkTypography.labelLarge.copy(fontSize = 12.sp), color = OnSurfaceVariant)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Box(modifier = Modifier.fillMaxWidth().height(6.dp).clip(CircleShape).background(SurfaceContainerHighest)) {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = name,
+                                    style = StarkTypography.headlineMedium.copy(fontSize = 13.sp, fontWeight = FontWeight.Medium),
+                                    color = OnSurface,
+                                    maxLines = 1
+                                )
+                                Text(
+                                    text = if (progress >= 0.9f) "Critical" else if (progress >= 0.7f) "Projected" else "Healthy",
+                                    style = StarkTypography.labelLarge.copy(fontSize = 9.sp),
+                                    color = OnSurfaceVariant,
+                                    maxLines = 1
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(SurfaceContainerHighest)) {
                                     Box(modifier = Modifier.fillMaxWidth(progress).fillMaxHeight().background(color))
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text("₹${String.format("%.0f", 1200 * progress)} SPENT", style = StarkTypography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold))
-                                    Text("₹1,200 LIMIT", style = StarkTypography.labelSmall.copy(fontSize = 10.sp, fontWeight = FontWeight.Bold))
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    Text("₹${String.format("%.0f", 1200 * progress)}", style = StarkTypography.labelSmall.copy(fontSize = 9.sp, fontWeight = FontWeight.Bold))
+                                    Text("of ₹1,200", style = StarkTypography.labelSmall.copy(fontSize = 8.sp, color = OnSurfaceVariant))
                                 }
                             }
                             if (index < rowItems.size - 1) {
@@ -246,18 +260,18 @@ fun WalletsScreen(
                     .fillMaxWidth()
                     .border(width = 2.dp, color = SecondaryContainer, shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp, bottomStart = 0.dp, bottomEnd = 0.dp))
             ) {
-                Row(modifier = Modifier.padding(32.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.padding(24.dp)) {
                     Surface(
                         color = SurfaceContainerHigh,
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.size(width = 200.dp, height = 160.dp)
+                        modifier = Modifier.fillMaxWidth().height(160.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center, modifier = Modifier.background(Brush.linearGradient(listOf(Color(0xFF001F24), Color(0xFF00363D))))) {
                             Icon(Icons.Sharp.AutoAwesome, contentDescription = null, tint = SecondaryContainer.copy(alpha = 0.2f), modifier = Modifier.size(100.dp))
                         }
                     }
-                    Spacer(modifier = Modifier.width(32.dp))
-                    Column(modifier = Modifier.weight(1f)) {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Column(modifier = Modifier.fillMaxWidth()) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Sharp.AutoAwesome, contentDescription = null, tint = SecondaryContainer, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(8.dp))
@@ -277,7 +291,7 @@ fun WalletsScreen(
                             onClick = {},
                             colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer),
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.height(52.dp).padding(horizontal = 32.dp)
+                            modifier = Modifier.fillMaxWidth().height(52.dp)
                         ) {
                             Text("Apply Optimization", style = StarkTypography.labelLarge.copy(color = OnPrimary, fontWeight = FontWeight.Bold))
                         }
