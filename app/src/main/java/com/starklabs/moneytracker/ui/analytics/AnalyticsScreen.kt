@@ -245,7 +245,8 @@ fun AnalyticsScreen(
                                     Text(java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(java.util.Date(transaction.date)), style = StarkTypography.labelSmall.copy(fontSize = 9.sp))
                                 }
                                 
-                                    // Using category color for the background if it's not a debit (income)
+                                // Category Icon with Timeline Line
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(if(isDebit) SurfaceContainerHighest else transaction.categoryColor.copy(alpha = 0.2f)).border(width = 1.dp, color = OutlineVariant.copy(alpha = 0.2f), shape = CircleShape), contentAlignment = Alignment.Center) {
                                         Icon(
                                             imageVector = when(transaction.categoryName.lowercase()) {
