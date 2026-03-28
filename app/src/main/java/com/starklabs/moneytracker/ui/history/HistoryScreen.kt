@@ -221,7 +221,7 @@ fun HistoryScreen(
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Button(
-                                    onClick = {},
+                                    onClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Analytics.route) },
                                     colors = ButtonDefaults.buttonColors(containerColor = SurfaceContainerHighest),
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.height(40.dp)

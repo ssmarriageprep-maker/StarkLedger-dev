@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 import androidx.navigation.NavController
 import com.starklabs.moneytracker.data.MoneyRepository
 import com.starklabs.moneytracker.ui.components.*
@@ -41,6 +42,15 @@ class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
 
     val categories = repository.allCategories
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun updateCategoryBudget(categoryId: Int, newLimit: Double) {
+        viewModelScope.launch {
+            val category = categories.value.find { it.id == categoryId }
+            category?.let {
+                repository.updateCategory(it.copy(budgetLimit = newLimit))
+            }
+        }
+    }
 }
 
 class WalletsViewModelFactory(private val repository: MoneyRepository) : ViewModelProvider.Factory {
@@ -61,6 +71,56 @@ fun WalletsScreen(
 ) {
     val accounts by viewModel.accounts.collectAsState()
     val categories by viewModel.categories.collectAsState()
+    var showAdjustBudgetDialog by remember { mutableStateOf(false) }
+    var categoryToAdjust by remember { mutableStateOf<com.starklabs.moneytracker.data.Category?>(null) }
+    var optimizationApplied by remember { mutableStateOf(false) }
+    var isOptimizing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    if (showAdjustBudgetDialog && categoryToAdjust != null) {
+        var newLimit by remember { mutableStateOf(categoryToAdjust!!.budgetLimit.toString()) }
+        AlertDialog(
+            onDismissRequest = { showAdjustBudgetDialog = false },
+            title = { Text("Adjust Budget: ${categoryToAdjust!!.name}", color = Primary) },
+            text = {
+                Column {
+                    Text("Enter new monthly limit for this category:", color = OnSurfaceVariant)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = newLimit,
+                        onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) newLimit = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Limit (₹)") },
+                        textStyle = StarkTypography.bodyLarge.copy(color = OnSurface),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Primary,
+                            unfocusedBorderColor = OutlineVariant,
+                            cursorColor = Primary
+                        )
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val limitValue = newLimit.toDoubleOrNull() ?: categoryToAdjust!!.budgetLimit
+                        viewModel.updateCategoryBudget(categoryToAdjust!!.id, limitValue)
+                        showAdjustBudgetDialog = false
+                    }
+                ) {
+                    Text("UPDATE", color = Primary, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAdjustBudgetDialog = false }) {
+                    Text("CANCEL", color = OnSurfaceVariant)
+                }
+            },
+            containerColor = SurfaceContainer
+        )
+    }
 
     Scaffold(
         containerColor = SurfaceContainerLowest,
@@ -69,7 +129,8 @@ fun WalletsScreen(
                 title = "StarkLedger",
                 onSettingsClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Settings.route) }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -171,7 +232,11 @@ fun WalletsScreen(
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Button(
-                        onClick = {},
+                        onClick = {
+                            // Find Food category for this mock warning
+                            categoryToAdjust = categories.find { it.name.contains("Food", ignoreCase = true) }
+                            if (categoryToAdjust != null) showAdjustBudgetDialog = true
+                        },
                         colors = ButtonDefaults.buttonColors(containerColor = SurfaceContainerHighest),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.height(36.dp)
@@ -288,12 +353,37 @@ fun WalletsScreen(
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(
-                            onClick = {},
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryContainer),
+                            onClick = {
+                                if (!optimizationApplied) {
+                                    isOptimizing = true
+                                    scope.launch {
+                                        kotlinx.coroutines.delay(2000L) // Artificial pulse for UX
+                                        // "Apply" by finding Transport category and adjusting it for the user
+                                        val transport = categories.find { it.name.contains("Transport", ignoreCase = true) }
+                                        transport?.let {
+                                            viewModel.updateCategoryBudget(it.id, it.budgetLimit + 42.0)
+                                        }
+                                        isOptimizing = false
+                                        optimizationApplied = true
+                                        snackbarHostState.showSnackbar("Optimization Applied: Transport budget optimized by ₹42.00")
+                                    }
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (optimizationApplied) TertiaryContainer else PrimaryContainer
+                            ),
                             shape = RoundedCornerShape(12.dp),
-                            modifier = Modifier.fillMaxWidth().height(52.dp)
+                            modifier = Modifier.fillMaxWidth().height(52.dp),
+                            enabled = !isOptimizing
                         ) {
-                            Text("Apply Optimization", style = StarkTypography.labelLarge.copy(color = OnPrimary, fontWeight = FontWeight.Bold))
+                            if (isOptimizing) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = OnPrimary, strokeWidth = 2.dp)
+                            } else {
+                                Text(
+                                    text = if (optimizationApplied) "Optimization Applied" else "Apply Optimization",
+                                    style = StarkTypography.labelLarge.copy(color = OnPrimary, fontWeight = FontWeight.Bold)
+                                )
+                            }
                         }
                     }
                 }
