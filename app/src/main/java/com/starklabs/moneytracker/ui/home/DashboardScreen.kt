@@ -97,7 +97,7 @@ fun DashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 20.dp),
             contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp)
         ) {
             // 1. Total Balance Hero Section
@@ -172,7 +172,7 @@ fun DashboardScreen(
                 ) {
                     Row(modifier = Modifier.fillMaxWidth()) {
                         // Left Column: Income vs Expenses
-                        Column(modifier = Modifier.weight(2f)) {
+                        Column(modifier = Modifier.weight(1.2f)) {
                             // Income Card
                             StarkCard(modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp)) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -213,12 +213,12 @@ fun DashboardScreen(
                                 }
                             }
                         }
-
-                        Spacer(modifier = Modifier.width(24.dp))
-
+                        
+                        Spacer(modifier = Modifier.width(12.dp))
+                        
                         // Right Column: Budget Health
-                        StarkCard(modifier = Modifier.weight(1f).heightIn(min = 336.dp)) {
-                            Text("Budget Health", style = StarkTypography.titleMedium)
+                        StarkCard(modifier = Modifier.weight(1f).heightIn(min = 340.dp), contentPadding = PaddingValues(12.dp)) {
+                            Text("Budget\nHealth", style = StarkTypography.titleMedium.copy(lineHeight = 18.sp), maxLines = 2)
                             Spacer(modifier = Modifier.weight(1f))
                             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(128.dp).align(Alignment.CenterHorizontally)) {
                                 CircularProgressIndicator(
@@ -257,12 +257,17 @@ fun DashboardScreen(
                                 modifier = Modifier.fillMaxWidth().border(BorderStroke(1.dp, SecondaryContainer.copy(alpha = 0.5f)), RoundedCornerShape(16.dp))
                             ) {
                                 Column(modifier = Modifier.padding(12.dp)) {
-                                    Text("AI INSIGHT", style = StarkTypography.labelSmall.copy(color = SecondaryContainer, fontSize = 10.sp))
+                                    Text(
+                                        text = "AI INSIGHT", 
+                                        style = StarkTypography.labelSmall.copy(color = SecondaryContainer, fontSize = 9.sp),
+                                        maxLines = 1
+                                    )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "Safe to spend ₹${String.format("%.0f", (state.balance / 30))}/day",
-                                        style = StarkTypography.bodySmall,
-                                        color = OnSurface
+                                        text = "Safe to spend\n₹${String.format("%.0f", (state.balance / 30))}/day",
+                                        style = StarkTypography.bodySmall.copy(fontSize = 11.sp, lineHeight = 14.sp),
+                                        color = OnSurface,
+                                        maxLines = 2
                                     )
                                 }
                             }

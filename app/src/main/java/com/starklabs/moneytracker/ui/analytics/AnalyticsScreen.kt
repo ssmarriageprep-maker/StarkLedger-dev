@@ -55,7 +55,7 @@ fun AnalyticsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp)
+                .padding(horizontal = 20.dp)
                 .verticalScroll(rememberScrollState())
         ) {
             Spacer(modifier = Modifier.height(24.dp))
@@ -116,7 +116,7 @@ fun AnalyticsScreen(
             ) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 // Spending Velocity (Line Chart)
-                StarkCard(modifier = Modifier.weight(2f).height(400.dp)) {
+                StarkCard(modifier = Modifier.weight(1.1f).height(400.dp), contentPadding = PaddingValues(16.dp)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
                         Column {
                             Text("Spending Velocity", style = StarkTypography.titleLarge)
@@ -150,20 +150,20 @@ fun AnalyticsScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.width(24.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
                 // Composition (Pie Chart)
-                StarkCard(modifier = Modifier.weight(1f).height(400.dp)) {
-                    Text("Composition", style = StarkTypography.titleLarge)
-                    Text("BY PERCENTAGE", style = StarkTypography.labelSmall)
+                StarkCard(modifier = Modifier.weight(1f).height(400.dp), contentPadding = PaddingValues(12.dp)) {
+                    Text("Composition", style = StarkTypography.titleLarge.copy(fontSize = 18.sp), maxLines = 1)
+                    Text("BY PERCENTAGE", style = StarkTypography.labelSmall, maxLines = 1)
 
                     Spacer(modifier = Modifier.weight(1f))
 
-                    Box(modifier = Modifier.size(160.dp).align(Alignment.CenterHorizontally), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.size(140.dp).align(Alignment.CenterHorizontally), contentAlignment = Alignment.Center) {
                         AnimatedDonutChart(slices = state.pieSlices, modifier = Modifier.fillMaxSize())
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("78%", style = StarkTypography.headlineMedium, color = OnSurface)
-                            Text("TRACKED", style = StarkTypography.labelSmall.copy(fontSize = 10.sp))
+                            Text("78%", style = StarkTypography.headlineMedium.copy(fontSize = 20.sp), color = OnSurface)
+                            Text("TRACKED", style = StarkTypography.labelSmall.copy(fontSize = 9.sp))
                         }
                     }
 
