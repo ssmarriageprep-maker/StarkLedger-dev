@@ -26,6 +26,16 @@ data class CategoryPerformance(
     val percentage: Float
 )
 
+data class TransactionDisplay(
+    val id: Int,
+    val amount: Double,
+    val merchant: String,
+    val date: Long,
+    val type: String,
+    val categoryName: String,
+    val categoryColor: Color
+)
+
 data class AnalyticsState(
     val pieSlices: List<Slice> = emptyList(),
     val weeklySpending: List<Float> = emptyList(), // Last 7 days
@@ -35,7 +45,8 @@ data class AnalyticsState(
     val categoryPerformance: List<CategoryPerformance> = emptyList(),
     val pulseTitle: String = "Calculating Pulse...",
     val pulseDescription: String = "Analyzing your spending patterns...",
-    val pulseColor: Color = Color(0xFFFEB300) // SecondaryContainer
+    val pulseColor: Color = Color(0xFFFEB300), // SecondaryContainer
+    val recentTransactions: List<TransactionDisplay> = emptyList()
 )
 
 class AnalyticsViewModel(private val repository: MoneyRepository) : ViewModel() {
@@ -154,7 +165,19 @@ class AnalyticsViewModel(private val repository: MoneyRepository) : ViewModel() 
             categoryPerformance = performance,
             pulseTitle = pulseTitle,
             pulseDescription = pulseDescription,
-            pulseColor = pulseColor
+            pulseColor = pulseColor,
+            recentTransactions = transactions.take(10).map { t ->
+                val category = categories.find { it.id == t.categoryId }
+                TransactionDisplay(
+                    id = t.id,
+                    amount = t.amount,
+                    merchant = t.merchant,
+                    date = t.date,
+                    type = t.type,
+                    categoryName = category?.name ?: "Uncategorized",
+                    categoryColor = try { Color(android.graphics.Color.parseColor(category?.colorHex ?: "#808080")) } catch (e: Exception) { Color.Gray }
+                )
+            }
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AnalyticsState())
 }

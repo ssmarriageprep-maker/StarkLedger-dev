@@ -94,7 +94,7 @@ fun DashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 20.dp),
             contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp)
         ) {
             // 1. Total Balance Hero Section
@@ -152,15 +152,29 @@ fun DashboardScreen(
 
             // 2. Bento Grid
             item {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    // Left Column: Income vs Expenses
-                    Column(modifier = Modifier.weight(2f)) {
-                        // Income Card
-                        StarkCard(modifier = Modifier.fillMaxWidth().height(160.dp)) {
-                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("MONTHLY INCOME", style = StarkTypography.labelSmall)
-                                Box(modifier = Modifier.size(32.dp).clip(RoundedCornerShape(12.dp)).background(TertiaryContainer.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Sharp.ArrowDownward, contentDescription = null, tint = TertiaryContainer, modifier = Modifier.size(20.dp))
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(tween(1000)) + slideInVertically(tween(1000), initialOffsetY = { it / 2 })
+                ) {
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        // Left Column: Income vs Expenses
+                        Column(modifier = Modifier.weight(1.2f)) {
+                            // Income Card
+                            StarkCard(modifier = Modifier.fillMaxWidth().heightIn(min = 160.dp)) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text("MONTHLY INCOME", style = StarkTypography.labelSmall)
+                                    Box(modifier = Modifier.size(32.dp).clip(RoundedCornerShape(12.dp)).background(TertiaryContainer.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Sharp.ArrowDownward, contentDescription = null, tint = TertiaryContainer, modifier = Modifier.size(20.dp))
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "₹${String.format("%,.0f", state.totalIncome)}",
+                                    style = StarkTypography.headlineMedium.copy(fontSize = if (state.totalIncome > 1000000) 20.sp else 24.sp)
+                                )
+                                Spacer(modifier = Modifier.height(24.dp))
+                                Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(SurfaceContainerHigh)) {
+                                    Box(modifier = Modifier.fillMaxWidth().fillMaxHeight().background(TertiaryContainer))
                                 }
                             }
                             Spacer(modifier = Modifier.weight(1f))
@@ -188,36 +202,21 @@ fun DashboardScreen(
                                 Box(modifier = Modifier.fillMaxWidth(state.budgetProgress.coerceIn(0f, 1f)).fillMaxHeight().background(Error))
                             }
                         }
-                    }
-
-                    Spacer(modifier = Modifier.width(24.dp))
-
-                    // Right Column: Budget Health
-                    StarkCard(modifier = Modifier.weight(1f).height(336.dp)) {
-                        Text("Budget Health", style = StarkTypography.titleMedium)
-                        Spacer(modifier = Modifier.weight(1f))
-                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(128.dp).align(Alignment.CenterHorizontally)) {
-                            CircularProgressIndicator(
-                                progress = { 1f },
-                                modifier = Modifier.fillMaxSize(),
-                                color = SurfaceContainerHigh,
-                                strokeWidth = 12.dp,
-                                trackColor = Color.Transparent,
-                                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                            )
-                            CircularProgressIndicator(
-                                progress = { state.budgetProgress },
-                                modifier = Modifier.fillMaxSize(),
-                                color = PrimaryContainer,
-                                strokeWidth = 12.dp,
-                                trackColor = Color.Transparent,
-                                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                            )
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text(
-                                    text = "${((1 - state.budgetProgress) * 100).toInt()}%",
-                                    style = StarkTypography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = OnSurface
+                        
+                        Spacer(modifier = Modifier.width(12.dp))
+                        
+                        // Right Column: Budget Health
+                        StarkCard(modifier = Modifier.weight(1f).heightIn(min = 340.dp), contentPadding = PaddingValues(12.dp)) {
+                            Text("Budget\nHealth", style = StarkTypography.titleMedium.copy(lineHeight = 18.sp), maxLines = 2)
+                            Spacer(modifier = Modifier.weight(1f))
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(128.dp).align(Alignment.CenterHorizontally)) {
+                                CircularProgressIndicator(
+                                    progress = { 1f },
+                                    modifier = Modifier.fillMaxSize(),
+                                    color = SurfaceContainerHigh,
+                                    strokeWidth = 12.dp,
+                                    trackColor = Color.Transparent,
+                                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                                 )
                                 Text(
                                     text = "SAFE",
@@ -225,21 +224,26 @@ fun DashboardScreen(
                                     color = OnSurfaceVariant
                                 )
                             }
-                        }
-                        Spacer(modifier = Modifier.weight(1f))
-                        Surface(
-                            color = SurfaceContainerHigh,
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.fillMaxWidth().border(BorderStroke(1.dp, SecondaryContainer.copy(alpha = 0.5f)), RoundedCornerShape(16.dp))
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text("AI INSIGHT", style = StarkTypography.labelSmall.copy(color = SecondaryContainer, fontSize = 10.sp))
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "Safe to spend ₹${String.format("%.0f", (state.balance / 30))}/day",
-                                    style = StarkTypography.bodySmall,
-                                    color = OnSurface
-                                )
+                            Spacer(modifier = Modifier.weight(1f))
+                            Surface(
+                                color = SurfaceContainerHigh,
+                                shape = RoundedCornerShape(16.dp),
+                                modifier = Modifier.fillMaxWidth().border(BorderStroke(1.dp, SecondaryContainer.copy(alpha = 0.5f)), RoundedCornerShape(16.dp))
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Text(
+                                        text = "AI INSIGHT", 
+                                        style = StarkTypography.labelSmall.copy(color = SecondaryContainer, fontSize = 9.sp),
+                                        maxLines = 1
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "Safe to spend\n₹${String.format("%.0f", (state.balance / 30))}/day",
+                                        style = StarkTypography.bodySmall.copy(fontSize = 11.sp, lineHeight = 14.sp),
+                                        color = OnSurface,
+                                        maxLines = 2
+                                    )
+                                }
                             }
                         }
                     }

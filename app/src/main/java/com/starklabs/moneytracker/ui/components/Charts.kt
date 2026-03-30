@@ -62,7 +62,7 @@ fun AnimatedDonutChart(
                 useCenter = false,
                 topLeft = Offset(center.x - radius, center.y - radius),
                 size = Size(radius * 2, radius * 2),
-                style = Stroke(width = strokeWidth)
+                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
             )
             startAngle += sweepAngle
         }
@@ -121,14 +121,26 @@ fun GlowingLineChart(
             fillPath.lineTo(0f, height)
             fillPath.close()
 
-            // Draw Fill
+            // Draw Fill with Gradient
             drawPath(
                 path = fillPath,
-                brush = Brush.verticalGradient(listOf(fillStartColor, fillEndColor)),
-                alpha = progress
+                brush = Brush.verticalGradient(
+                    colors = listOf(fillStartColor, Color.Transparent),
+                    startY = 0f,
+                    endY = height
+                ),
+                alpha = progress * 0.5f
             )
 
-            // Draw Line
+            // Draw Glow (Multi-layered line)
+            drawPath(
+                path = path,
+                color = lineColor.copy(alpha = 0.2f),
+                style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round),
+                alpha = progress
+            )
+            
+            // Draw Main Line
             drawPath(
                 path = path,
                 color = lineColor,
@@ -136,11 +148,17 @@ fun GlowingLineChart(
                 alpha = progress
             )
 
-            // Draw last point dot
+            // Draw last point with glow
             val lastPoint = points.last()
             drawCircle(
+                color = lineColor.copy(alpha = 0.3f),
+                radius = 10.dp.toPx(),
+                center = lastPoint,
+                alpha = progress
+            )
+            drawCircle(
                 color = lineColor,
-                radius = 6.dp.toPx(),
+                radius = 5.dp.toPx(),
                 center = lastPoint,
                 alpha = progress
             )
