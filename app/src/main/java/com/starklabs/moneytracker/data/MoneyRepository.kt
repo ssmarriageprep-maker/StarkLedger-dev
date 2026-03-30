@@ -36,6 +36,16 @@ class MoneyRepository(
         }
     }
 
+    suspend fun deleteTransaction(transaction: Transaction) {
+        transactionDao.delete(transaction)
+        // Reverse account balance
+        if (transaction.type == "DEBIT") {
+            accountDao.addBalance(transaction.accountId, transaction.amount)
+        } else {
+            accountDao.deductBalance(transaction.accountId, transaction.amount)
+        }
+    }
+
     suspend fun updateTransactionCategory(transactionId: Int, newCategoryId: Int, merchant: String? = null) {
         val allTx = transactionDao.getAllTransactionsOneShot()
         val tx = allTx.find { it.id == transactionId }

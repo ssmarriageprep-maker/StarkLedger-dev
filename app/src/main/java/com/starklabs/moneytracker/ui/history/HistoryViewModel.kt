@@ -54,6 +54,12 @@ class HistoryViewModel(private val repository: MoneyRepository) : ViewModel() {
             repository.updateTransactionCategory(transactionId, newCategoryId, merchant)
         }
     }
+
+    fun deleteTransaction(transaction: Transaction) {
+        viewModelScope.launch {
+            repository.deleteTransaction(transaction)
+        }
+    }
 }
 
 class HistoryViewModelFactory(private val repository: MoneyRepository) : ViewModelProvider.Factory {

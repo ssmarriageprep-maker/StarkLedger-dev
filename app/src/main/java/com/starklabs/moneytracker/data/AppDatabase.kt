@@ -110,6 +110,9 @@ interface TransactionDao {
     @Update
     suspend fun update(transaction: Transaction)
 
+    @Delete
+    suspend fun delete(transaction: Transaction)
+
     @Query("SELECT SUM(amount) FROM transactions WHERE type = 'DEBIT'")
     fun getTotalSpent(): Flow<Double?>
 
