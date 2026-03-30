@@ -81,7 +81,15 @@ fun StarkCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Surface(
-        modifier = modifier.clip(RoundedCornerShape(cornerRadius)),
+        modifier = modifier
+            .clip(RoundedCornerShape(cornerRadius))
+            .border(
+                width = 1.dp,
+                brush = Brush.linearGradient(
+                    listOf(Color.White.copy(alpha = 0.05f), Color.Transparent)
+                ),
+                shape = RoundedCornerShape(cornerRadius)
+            ),
         color = backgroundColor,
         shape = RoundedCornerShape(cornerRadius)
     ) {

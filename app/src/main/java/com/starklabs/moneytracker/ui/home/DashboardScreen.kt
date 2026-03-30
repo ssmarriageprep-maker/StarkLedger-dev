@@ -170,6 +170,32 @@ fun DashboardScreen(
                     visible = visible,
                     enter = fadeIn(tween(1000)) + slideInVertically(tween(1000), initialOffsetY = { it / 2 })
                 ) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // Spending Trend Chart (New UI Component)
+                        StarkCard(
+                            modifier = Modifier.fillMaxWidth().height(120.dp),
+                            backgroundColor = SurfaceContainerLow,
+                            cornerRadius = 24.dp,
+                            contentPadding = PaddingValues(16.dp)
+                        ) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Column {
+                                    Text("VELOCITY TREND", style = StarkTypography.labelSmall.copy(letterSpacing = 1.sp, color = PrimaryFixedDim))
+                                    Text("7-Day Pulse", style = StarkTypography.bodySmall, color = OnSurfaceVariant)
+                                }
+                                Icon(Icons.Sharp.Timeline, contentDescription = null, tint = PrimaryFixedDim, modifier = Modifier.size(20.dp))
+                            }
+                            Spacer(modifier = Modifier.weight(1f))
+                            GlowingLineChart(
+                                data = state.spendingTrend,
+                                modifier = Modifier.fillMaxWidth().height(40.dp),
+                                lineColor = PrimaryFixedDim,
+                                fillStartColor = PrimaryFixedDim.copy(alpha = 0.1f)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
                     Row(modifier = Modifier.fillMaxWidth()) {
                         // Left Column: Income vs Expenses
                         Column(modifier = Modifier.weight(2f)) {
@@ -267,6 +293,7 @@ fun DashboardScreen(
                                 }
                             }
                         }
+                    }
                     }
                 }
             }

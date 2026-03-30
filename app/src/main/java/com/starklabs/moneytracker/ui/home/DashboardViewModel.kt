@@ -18,7 +18,8 @@ data class DashboardState(
     val totalIncome: Double = 0.0,
     val balance: Double = 0.0,
     val recentTransactions: List<Transaction> = emptyList(),
-    val budgetProgress: Float = 0.0f
+    val budgetProgress: Float = 0.0f,
+    val spendingTrend: List<Float> = emptyList()
 )
 
 class DashboardViewModel(
@@ -67,13 +68,26 @@ class DashboardViewModel(
         val totalBudget = categories.sumOf { it.budgetLimit }.takeIf { it > 0 } ?: 25000.0
         
         val progress = (s / totalBudget).coerceIn(0.0, 1.0).toFloat()
+
+        // Calculate 7-day spending trend
+        val now = System.currentTimeMillis()
+        val dayMillis = 24 * 60 * 60 * 1000L
+        val last7Days = (0..6).map { i ->
+            val dayStart = now - (i * dayMillis)
+            val dayEnd = dayStart + dayMillis
+            transactions.filter { it.date in dayStart until dayEnd && it.type == "DEBIT" }.sumOf { it.amount }
+        }.reversed()
+
+        val maxSpend = last7Days.maxOrNull()?.takeIf { it > 0 } ?: 1.0
+        val trend = last7Days.map { (it / maxSpend).toFloat() }
         
         DashboardState(
             totalSpent = s,
             totalIncome = i,
             balance = totalBalance,
             recentTransactions = transactions.take(logCount),
-            budgetProgress = progress
+            budgetProgress = progress,
+            spendingTrend = trend
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardState())
 
