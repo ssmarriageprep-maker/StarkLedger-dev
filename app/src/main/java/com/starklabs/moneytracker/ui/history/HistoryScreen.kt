@@ -1,11 +1,15 @@
 package com.starklabs.moneytracker.ui.history
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -31,39 +35,97 @@ fun HistoryScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val categories by viewModel.categories.collectAsState()
-    var transactionToEdit by remember { mutableStateOf<com.starklabs.moneytracker.data.Transaction?>(null) }
-    
-    if (transactionToEdit != null) {
-        AlertDialog(
-            onDismissRequest = { transactionToEdit = null },
-            title = { Text("Edit Category") },
-            text = {
-                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
-                    items(categories) { cat ->
+    var selectedTransaction by remember { mutableStateOf<com.starklabs.moneytracker.data.Transaction?>(null) }
+    var showDetailSheet by remember { mutableStateOf(false) }
+
+    if (showDetailSheet && selectedTransaction != null) {
+        val t = selectedTransaction!!
+        val isDebit = t.type == "DEBIT"
+
+        ModalBottomSheet(
+            onDismissRequest = { showDetailSheet = false },
+            containerColor = SurfaceContainer,
+            dragHandle = { BottomSheetDefaults.DragHandle(color = OutlineVariant) }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 48.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(t.merchant.uppercase(), style = StarkTypography.labelSmall.copy(letterSpacing = 2.sp, color = PrimaryContainer))
                         Text(
-                            text = cat.name,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    transactionToEdit?.let {
-                                        viewModel.updateTransactionCategory(it.id, cat.id, it.merchant)
-                                    }
-                                    transactionToEdit = null
-                                }
-                                .padding(16.dp),
-                            color = OnSurface
+                            text = if (isDebit) "-₹${String.format("%,.2f", t.amount)}" else "+₹${String.format("%,.2f", t.amount)}",
+                            style = StarkTypography.displayMedium.copy(fontSize = 32.sp, fontWeight = FontWeight.Bold),
+                            color = if (isDebit) OnSurface else TertiaryContainer
                         )
                     }
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(SurfaceContainerHighest),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CategoryIcon(null, tint = PrimaryContainer, modifier = Modifier.size(32.dp))
+                    }
                 }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { transactionToEdit = null }) {
-                    Text("Cancel", color = Primary)
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Metadata Details
+                StarkCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    backgroundColor = SurfaceContainerLow,
+                    cornerRadius = 16.dp,
+                    contentPadding = PaddingValues(16.dp)
+                ) {
+                    DetailRow("Timestamp", java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(t.date)))
+                    Divider(modifier = Modifier.padding(vertical = 12.dp), color = OutlineVariant.copy(alpha = 0.1f))
+                    DetailRow("Type", t.type)
+                    Divider(modifier = Modifier.padding(vertical = 12.dp), color = OutlineVariant.copy(alpha = 0.1f))
+                    DetailRow("Category ID", t.categoryId?.toString() ?: "Uncategorized")
+                    t.smsBody?.let {
+                        Divider(modifier = Modifier.padding(vertical = 12.dp), color = OutlineVariant.copy(alpha = 0.1f))
+                        Column {
+                            Text("ORIGINAL INTEL", style = StarkTypography.labelSmall.copy(color = OnSurfaceVariant.copy(alpha = 0.6f)))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(it, style = StarkTypography.bodyMedium, color = OnSurface)
+                        }
+                    }
                 }
-            },
-            containerColor = SurfaceContainer
-        )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Button(
+                        onClick = { showDetailSheet = false },
+                        modifier = Modifier.weight(1f).height(52.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceContainerHighest),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("CLOSE", color = OnSurfaceVariant)
+                    }
+                    Button(
+                        onClick = {
+                            viewModel.deleteTransaction(t)
+                            showDetailSheet = false
+                        },
+                        modifier = Modifier.weight(1f).height(52.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = ErrorContainer.copy(alpha = 0.2f)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("DELETE", color = Error)
+                    }
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -110,7 +172,37 @@ fun HistoryScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Filter Chips
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val filters = listOf("All", "Debit", "Credit", "Food", "Travel", "Bills")
+                filters.forEach { filter ->
+                    val isSelected = (filter == "All" && state.searchQuery.isEmpty()) || state.searchQuery.equals(filter, ignoreCase = true)
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { viewModel.onSearchQueryChange(if (filter == "All") "" else filter) },
+                        label = { Text(filter) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = PrimaryContainer.copy(alpha = 0.2f),
+                            selectedLabelColor = Primary,
+                            containerColor = SurfaceContainerLow,
+                            labelColor = OnSurfaceVariant
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = isSelected,
+                            borderColor = OutlineVariant.copy(alpha = 0.3f),
+                            selectedBorderColor = Primary
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             if (state.groupedTransactions.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -140,57 +232,99 @@ fun HistoryScreen(
                                 )
                             }
                         }
-                        items(transactions) { transaction ->
-                            StarkCard(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                backgroundColor = SurfaceContainerLow,
-                                cornerRadius = 12.dp,
-                                contentPadding = PaddingValues(16.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.weight(1f)
+                        items(transactions, key = { it.id }) { transaction ->
+                            val dismissState = rememberSwipeToDismissBoxState(
+                                confirmValueChange = {
+                                    if (it == SwipeToDismissBoxValue.EndToStart) {
+                                        viewModel.deleteTransaction(transaction)
+                                        true
+                                    } else false
+                                }
+                            )
+
+                            SwipeToDismissBox(
+                                state = dismissState,
+                                enableDismissFromStartToEnd = false,
+                                backgroundContent = {
+                                    val color by animateColorAsState(
+                                        when (dismissState.targetValue) {
+                                            SwipeToDismissBoxValue.EndToStart -> Error.copy(alpha = 0.2f)
+                                            else -> Color.Transparent
+                                        }, label = "dismiss_color"
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(vertical = 4.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(color = color),
+                                        contentAlignment = Alignment.CenterEnd
                                     ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(48.dp)
-                                                .clip(RoundedCornerShape(24.dp))
-                                                .background(SurfaceContainerHighest),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            CategoryIcon(null, tint = PrimaryFixedDim, modifier = Modifier.size(24.dp))
-                                        }
-                                        Spacer(modifier = Modifier.width(16.dp))
-                                        Column(modifier = Modifier.padding(end = 16.dp)) {
-                                            Text(
-                                                text = transaction.merchant,
-                                                style = StarkTypography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                                color = OnSurface,
-                                                maxLines = 2
-                                            )
-                                            Text("${formatStarkTime(transaction.date)}", style = StarkTypography.labelLarge.copy(fontSize = 12.sp), color = OnSurfaceVariant)
-                                        }
+                                        Icon(
+                                            Icons.Sharp.Delete,
+                                            contentDescription = "Delete",
+                                            tint = Error,
+                                            modifier = Modifier.padding(end = 24.dp)
+                                        )
                                     }
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        val isDebit = transaction.type == "DEBIT"
-                                        Text(
-                                            text = "${if (isDebit) "-" else "+"}₹${String.format("%,.2f", transaction.amount)}",
-                                            style = StarkTypography.headlineSmall.copy(fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
-                                            color = if (isDebit) OnSurface else TertiaryContainer
-                                        )
-                                        Text(
-                                            text = transaction.type.uppercase(),
-                                            style = StarkTypography.labelSmall.copy(fontSize = 10.sp),
-                                            color = if (isDebit) Outline else TertiaryContainer.copy(alpha = 0.6f)
-                                        )
+                                },
+                                content = {
+                                    StarkClickableCard(
+                                        onClick = {
+                                            selectedTransaction = transaction
+                                            showDetailSheet = true
+                                        },
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                        backgroundColor = SurfaceContainerLow,
+                                        cornerRadius = 12.dp,
+                                        contentPadding = PaddingValues(16.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.weight(1f)
+                                            ) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(48.dp)
+                                                        .clip(RoundedCornerShape(24.dp))
+                                                        .background(SurfaceContainerHighest),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    CategoryIcon(null, tint = PrimaryFixedDim, modifier = Modifier.size(24.dp))
+                                                }
+                                                Spacer(modifier = Modifier.width(16.dp))
+                                                Column(modifier = Modifier.padding(end = 16.dp)) {
+                                                    Text(
+                                                        text = transaction.merchant,
+                                                        style = StarkTypography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+                                                        color = OnSurface,
+                                                        maxLines = 2
+                                                    )
+                                                    Text("${formatStarkTime(transaction.date)}", style = StarkTypography.labelLarge.copy(fontSize = 12.sp), color = OnSurfaceVariant)
+                                                }
+                                            }
+                                            Column(horizontalAlignment = Alignment.End) {
+                                                val isDebit = transaction.type == "DEBIT"
+                                                Text(
+                                                    text = "${if (isDebit) "-" else "+"}₹${String.format("%,.2f", transaction.amount)}",
+                                                    style = StarkTypography.headlineSmall.copy(fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
+                                                    color = if (isDebit) OnSurface else TertiaryContainer
+                                                )
+                                                Text(
+                                                    text = transaction.type.uppercase(),
+                                                    style = StarkTypography.labelSmall.copy(fontSize = 10.sp),
+                                                    color = if (isDebit) Outline else TertiaryContainer.copy(alpha = 0.6f)
+                                                )
+                                            }
+                                        }
                                     }
                                 }
-                            }
+                            )
                         }
                     }
 
@@ -240,4 +374,12 @@ fun HistoryScreen(
 fun formatStarkTime(timestamp: Long): String {
     val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
     return sdf.format(java.util.Date(timestamp))
+}
+
+@Composable
+fun DetailRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = StarkTypography.labelSmall, color = OnSurfaceVariant.copy(alpha = 0.6f))
+        Text(value, style = StarkTypography.bodyMedium, color = OnSurface)
+    }
 }
