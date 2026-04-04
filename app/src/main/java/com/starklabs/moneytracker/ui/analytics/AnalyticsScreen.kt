@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,14 +39,30 @@ fun AnalyticsScreen(
     viewModel: AnalyticsViewModel
 ) {
     val state by viewModel.uiState.collectAsState()
+    val selectedAccountId by viewModel.selectedAccountId.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
     
     Scaffold(
         containerColor = SurfaceContainerLowest,
         topBar = {
-            StarkHeader(
-                title = "StarkLedger",
-                onSettingsClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Settings.route) }
-            )
+            Column(modifier = Modifier.background(SurfaceContainerLow)) {
+                StarkHeader(
+                    title = "StarkLedger",
+                    onSettingsClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Settings.route) }
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    GlobalAccountSelector(
+                        accounts = accounts,
+                        selectedAccountId = selectedAccountId,
+                        onAccountSelected = { viewModel.setSelectedAccount(it) }
+                    )
+                }
+            }
         }
     ) { paddingValues ->
         var visible by remember { mutableStateOf(false) }

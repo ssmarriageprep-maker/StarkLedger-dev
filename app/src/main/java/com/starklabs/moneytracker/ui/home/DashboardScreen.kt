@@ -71,12 +71,29 @@ fun DashboardScreen(
         )
     }
 
+    val selectedAccountId by viewModel.selectedAccountId.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
+
     Scaffold(
         containerColor = SurfaceContainerLowest,
         topBar = {
-            StarkHeader(
-                onSettingsClick = { navController.navigate(Screen.Settings.route) }
-            )
+            Column(modifier = Modifier.background(SurfaceContainerLow)) {
+                StarkHeader(
+                    onSettingsClick = { navController.navigate(Screen.Settings.route) }
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    GlobalAccountSelector(
+                        accounts = accounts,
+                        selectedAccountId = selectedAccountId,
+                        onAccountSelected = { viewModel.setSelectedAccount(it) }
+                    )
+                }
+            }
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -274,7 +291,12 @@ fun DashboardScreen(
                 }
             } else {
                 items(state.recentTransactions) { t ->
-                    TransactionRow(transaction = t, onClick = { transactionToEdit = t })
+                    val accountName = accounts.find { it.id == t.accountId }?.name
+                    TransactionRow(
+                        transaction = t,
+                        accountName = accountName,
+                        onClick = { transactionToEdit = t }
+                    )
                 }
             }
         }

@@ -60,12 +60,29 @@ class MoneyRepository(
     // Accounts
     val allAccounts: Flow<List<Account>> = accountDao.getAllAccounts()
     suspend fun addAccount(account: Account) = accountDao.insert(account)
+    suspend fun updateAccount(account: Account) = accountDao.update(account)
     suspend fun getAccount(id: Int) = accountDao.getAccountById(id)
     
+    suspend fun mergeAccounts(sourceId: Int, targetId: Int) {
+        transactionDao.reassignTransactions(sourceId, targetId)
+        val sourceAccount = accountDao.getAccountById(sourceId)
+        if (sourceAccount != null) {
+            accountDao.addBalance(targetId, sourceAccount.balance)
+            accountDao.delete(sourceAccount)
+        }
+    }
+
+    suspend fun deleteAccount(account: Account) {
+        // First reassign transactions to default account
+        val defaultAccountId = getDefaultAccount()?.id ?: 1
+        transactionDao.reassignTransactions(account.id, defaultAccountId)
+        accountDao.delete(account)
+    }
+
     // Smart Account Finding for SMS
     suspend fun findAccountForSms(last4: String?): Account? {
         if (last4 == null) return null
-        return accountDao.getAccountByMaskedNumber(last4)
+        return accountDao.getAccountByLast4(last4)
     }
 
     // Default Account (Fallback)
@@ -135,10 +152,9 @@ class MoneyRepository(
         }
         
         // Similarly for accounts, check if any exist
-        // Similarly for accounts, check if any exist
         if (accountDao.getAllAccounts().firstOrNull().isNullOrEmpty()) {
             val accounts = listOf(
-                 Account(name = "Cash", type = "CASH", balance = 0.0, colorHex = "#00B0FF", maskedNumber = null)
+                 Account(name = "Cash", type = "CASH", balance = 0.0, colorHex = "#00B0FF", last4Digits = null)
             )
             accounts.forEach { accountDao.insert(it) }
         }
