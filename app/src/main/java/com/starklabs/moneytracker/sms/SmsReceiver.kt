@@ -37,7 +37,7 @@ class SmsReceiver : BroadcastReceiver() {
                         val body = sms.messageBody ?: ""
                         val timestamp = sms.timestampMillis
 
-                        Log.d("SmsReceiver", "Received SMS from $sender: $body")
+                        Log.d("SmsReceiver", "Received SMS from $sender")
 
                         val parsed = SmsParser.parseSms(sender, body, timestamp)
                         
@@ -71,7 +71,6 @@ class SmsReceiver : BroadcastReceiver() {
 
                             // Balance is not extracted in strict mode
                             val balanceToUpdate: Double? = null 
-                            Log.d("SmsReceiver", "Inserted Transaction: $transaction")
 
                             repository.addTransaction(transaction, balanceToUpdate)
                         } else {

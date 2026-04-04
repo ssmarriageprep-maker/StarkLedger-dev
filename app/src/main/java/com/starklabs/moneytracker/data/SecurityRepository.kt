@@ -5,7 +5,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.security.MessageDigest
 
 private val Context.dataStore by preferencesDataStore("security_settings")
 
@@ -20,19 +22,34 @@ class SecurityRepository(private val context: Context) {
     }
 
     suspend fun savePin(pin: String) {
+        val hashedPin = hashPin(pin)
         context.dataStore.edit { preferences ->
-            preferences[PIN_KEY] = pin
+            preferences[PIN_KEY] = hashedPin
         }
     }
 
     suspend fun verifyPin(inputPin: String): Boolean {
-        var storedPin: String? = null
-        context.dataStore.edit { preferences ->
-             storedPin = preferences[PIN_KEY]
+        val preferences = context.dataStore.data.first()
+        val storedPin = preferences[PIN_KEY] ?: return false
+
+        // 1. Check if it matches as a salted hash (new format)
+        val hashedInput = hashPin(inputPin)
+        if (storedPin == hashedInput) return true
+
+        // 2. Migration: Check if it matches as plaintext (old format - 4 digits)
+        if (storedPin.length == 4 && storedPin == inputPin) {
+            // Automatically migrate to salted hash
+            savePin(inputPin)
+            return true
         }
-        // In a real app we wouldn't read like this for verification, but for this simple flow it works since we need a suspend function or collect. 
-        // Actually slightly cleaner to just collecting first.
-        // Let's rely on flow collection in ViewModel, but for simple checking:
-        return false // Placeholder, logic will be in ViewModel for flow comparison or here if we expose a suspend "getPin"
+
+        return false
+    }
+
+    private fun hashPin(pin: String): String {
+        val salt = "STARK_LEDGER_2024_SALT" // Static salt to prevent simple rainbow tables
+        val digest = MessageDigest.getInstance("SHA-256")
+        val bytes = digest.digest((salt + pin).toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }
     }
 }
