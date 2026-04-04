@@ -44,28 +44,34 @@ object SmsScanner {
 
                     val parsed = SmsParser.parseSms(sender, body, timestamp)
 
-                    if (parsed.isTransaction && parsed.accountLast4 != null) {
-                        val last4 = parsed.accountLast4!!
+                    if (parsed.isTransaction) {
+                        val last4 = parsed.accountLast4 ?: "Unknown"
+                        val bankName = parsed.bank ?: "Unknown"
+                        val accountKey = "$bankName-$last4"
 
-                        var accountId = sessionAccounts[last4]
+                        var accountId = sessionAccounts[accountKey]
                         if (accountId == null) {
-                            val existingAccount = repository.findAccountForSms(last4)
+                            val existingAccount = repository.findAccountForSms(parsed.accountLast4)
                             if (existingAccount != null) {
                                 accountId = existingAccount.id
                             } else {
-                                val bankName = parsed.bank ?: "Bank"
+                                val accountType = when(parsed.patternUsed) {
+                                    com.starklabs.moneytracker.domain.SmsPattern.CARD_SPEND -> "CARD"
+                                    com.starklabs.moneytracker.domain.SmsPattern.WALLET_PAYMENT -> "WALLET"
+                                    else -> "BANK"
+                                }
                                 val newAccount = Account(
-                                    name = "$bankName - $last4",
-                                    type = "BANK",
+                                    name = if (last4 == "Unknown") bankName else "$bankName •••• $last4",
+                                    type = accountType,
                                     balance = 0.0,
-                                    maskedNumber = last4,
+                                    last4Digits = if (last4 == "Unknown") null else last4,
                                     colorHex = "#FFD700"
                                 )
                                 val id = repository.addAccount(newAccount)
                                 accountId = id.toInt()
                                 newAccountsCreated++
                             }
-                            sessionAccounts[last4] = accountId
+                            sessionAccounts[accountKey] = accountId
                         }
 
                         val amount = parsed.amount ?: 0.0

@@ -11,10 +11,11 @@ import kotlinx.coroutines.flow.Flow
 data class Account(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val type: String, // "CASH", "BANK", "CREDIT_CARD", "UPI"
+    val type: String, // "BANK", "CARD", "WALLET", "CASH"
     val balance: Double,
     val colorHex: String = "#00B0FF",
-    val maskedNumber: String? = null // e.g., "1234" to match with SMS "ac 1234"
+    val last4Digits: String? = null,
+    val isActive: Boolean = true
 )
 
 @Entity(tableName = "categories")
@@ -58,14 +59,17 @@ interface AccountDao {
     suspend fun getAccountById(id: Int): Account?
     
     // Find account by matching last 4 digits
-    @Query("SELECT * FROM accounts WHERE maskedNumber = :last4 LIMIT 1")
-    suspend fun getAccountByMaskedNumber(last4: String): Account?
+    @Query("SELECT * FROM accounts WHERE last4Digits = :last4 LIMIT 1")
+    suspend fun getAccountByLast4(last4: String): Account?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(account: Account): Long
 
     @Update
     suspend fun update(account: Account)
+
+    @Delete
+    suspend fun delete(account: Account)
 
     @Query("UPDATE accounts SET balance = balance - :amount WHERE id = :id")
     suspend fun deductBalance(id: Int, amount: Double)
@@ -113,6 +117,9 @@ interface TransactionDao {
     @Delete
     suspend fun delete(transaction: Transaction)
 
+    @Query("UPDATE transactions SET accountId = :targetId WHERE accountId = :sourceId")
+    suspend fun reassignTransactions(sourceId: Int, targetId: Int)
+
     @Query("SELECT SUM(amount) FROM transactions WHERE type = 'DEBIT'")
     fun getTotalSpent(): Flow<Double?>
 
@@ -147,7 +154,7 @@ interface MerchantCategoryMappingDao {
 
 @Database(
     entities = [Transaction::class, Account::class, Category::class, MerchantCategoryMapping::class], 
-    version = 4, 
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

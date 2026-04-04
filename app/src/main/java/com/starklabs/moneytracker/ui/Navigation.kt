@@ -9,4 +9,7 @@ sealed class Screen(val route: String) {
     object Settings : Screen("settings")
     object AddAccount : Screen("add_account")
     object History : Screen("history")
+    object AccountDetail : Screen("account_detail/{accountId}") {
+        fun createRoute(accountId: Int) = "account_detail/$accountId"
+    }
 }

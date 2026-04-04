@@ -35,6 +35,8 @@ fun HistoryScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val categories by viewModel.categories.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
+    val selectedAccountId by viewModel.selectedAccountId.collectAsState()
     var selectedTransaction by remember { mutableStateOf<com.starklabs.moneytracker.data.Transaction?>(null) }
     var showDetailSheet by remember { mutableStateOf(false) }
 
@@ -88,9 +90,11 @@ fun HistoryScreen(
                 ) {
                     DetailRow("Timestamp", java.text.SimpleDateFormat("dd MMM yyyy, HH:mm", java.util.Locale.getDefault()).format(java.util.Date(t.date)))
                     Divider(modifier = Modifier.padding(vertical = 12.dp), color = OutlineVariant.copy(alpha = 0.1f))
+                    DetailRow("Account", accounts.find { it.id == t.accountId }?.name ?: "Unknown")
+                    Divider(modifier = Modifier.padding(vertical = 12.dp), color = OutlineVariant.copy(alpha = 0.1f))
                     DetailRow("Type", t.type)
                     Divider(modifier = Modifier.padding(vertical = 12.dp), color = OutlineVariant.copy(alpha = 0.1f))
-                    DetailRow("Category ID", t.categoryId?.toString() ?: "Uncategorized")
+                    DetailRow("Category", categories.find { it.id == t.categoryId }?.name ?: "Uncategorized")
                     t.smsBody?.let {
                         Divider(modifier = Modifier.padding(vertical = 12.dp), color = OutlineVariant.copy(alpha = 0.1f))
                         Column {
@@ -131,10 +135,24 @@ fun HistoryScreen(
     Scaffold(
         containerColor = SurfaceContainerLowest,
         topBar = {
-            StarkHeader(
-                title = "StarkLedger",
-                onSettingsClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Settings.route) }
-            )
+            Column(modifier = Modifier.background(SurfaceContainerLow)) {
+                StarkHeader(
+                    title = "StarkLedger",
+                    onSettingsClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Settings.route) }
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    GlobalAccountSelector(
+                        accounts = accounts,
+                        selectedAccountId = selectedAccountId,
+                        onAccountSelected = { viewModel.setSelectedAccount(it) }
+                    )
+                }
+            }
         }
     ) { paddingValues ->
         Column(
@@ -269,60 +287,15 @@ fun HistoryScreen(
                                     }
                                 },
                                 content = {
-                                    StarkClickableCard(
+                                    TransactionRow(
+                                        transaction = transaction,
+                                        accountName = accounts.find { it.id == transaction.accountId }?.name,
                                         onClick = {
                                             selectedTransaction = transaction
                                             showDetailSheet = true
                                         },
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                        backgroundColor = SurfaceContainerLow,
-                                        cornerRadius = 12.dp,
-                                        contentPadding = PaddingValues(16.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                modifier = Modifier.weight(1f)
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .size(48.dp)
-                                                        .clip(RoundedCornerShape(24.dp))
-                                                        .background(SurfaceContainerHighest),
-                                                    contentAlignment = Alignment.Center
-                                                ) {
-                                                    CategoryIcon(null, tint = PrimaryFixedDim, modifier = Modifier.size(24.dp))
-                                                }
-                                                Spacer(modifier = Modifier.width(16.dp))
-                                                Column(modifier = Modifier.padding(end = 16.dp)) {
-                                                    Text(
-                                                        text = transaction.merchant,
-                                                        style = StarkTypography.bodyLarge.copy(fontWeight = FontWeight.Bold),
-                                                        color = OnSurface,
-                                                        maxLines = 2
-                                                    )
-                                                    Text("${formatStarkTime(transaction.date)}", style = StarkTypography.labelLarge.copy(fontSize = 12.sp), color = OnSurfaceVariant)
-                                                }
-                                            }
-                                            Column(horizontalAlignment = Alignment.End) {
-                                                val isDebit = transaction.type == "DEBIT"
-                                                Text(
-                                                    text = "${if (isDebit) "-" else "+"}₹${String.format("%,.2f", transaction.amount)}",
-                                                    style = StarkTypography.headlineSmall.copy(fontSize = 18.sp, fontWeight = FontWeight.SemiBold),
-                                                    color = if (isDebit) OnSurface else TertiaryContainer
-                                                )
-                                                Text(
-                                                    text = transaction.type.uppercase(),
-                                                    style = StarkTypography.labelSmall.copy(fontSize = 10.sp),
-                                                    color = if (isDebit) Outline else TertiaryContainer.copy(alpha = 0.6f)
-                                                )
-                                            }
-                                        }
-                                    }
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                                    )
                                 }
                             )
                         }

@@ -8,6 +8,7 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -53,6 +54,18 @@ class WalletsViewModel(private val repository: MoneyRepository) : ViewModel() {
             category?.let {
                 repository.updateCategory(it.copy(budgetLimit = newLimit))
             }
+        }
+    }
+
+    fun updateAccount(account: com.starklabs.moneytracker.data.Account) {
+        viewModelScope.launch {
+            repository.updateAccount(account)
+        }
+    }
+
+    fun mergeAccounts(sourceId: Int, targetId: Int) {
+        viewModelScope.launch {
+            repository.mergeAccounts(sourceId, targetId)
         }
     }
 }
@@ -139,6 +152,55 @@ fun WalletsScreen(
         var visible by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) { visible = true }
 
+        var showMergeDialog by remember { mutableStateOf(false) }
+        var mergeSourceAccount by remember { mutableStateOf<com.starklabs.moneytracker.data.Account?>(null) }
+        var mergeTargetAccount by remember { mutableStateOf<com.starklabs.moneytracker.data.Account?>(null) }
+
+        if (showMergeDialog && mergeSourceAccount != null) {
+            AlertDialog(
+                onDismissRequest = { showMergeDialog = false },
+                title = { Text("Merge Account: ${mergeSourceAccount!!.name}", color = Primary) },
+                text = {
+                    Column {
+                        Text("Select target account to merge into. All transactions will be reassigned.", color = OnSurfaceVariant)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        accounts.filter { it.id != mergeSourceAccount!!.id }.forEach { acc ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { mergeTargetAccount = acc }
+                                    .padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(selected = mergeTargetAccount?.id == acc.id, onClick = { mergeTargetAccount = acc })
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(acc.name, color = OnSurface)
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            mergeTargetAccount?.let {
+                                viewModel.mergeAccounts(mergeSourceAccount!!.id, it.id)
+                                showMergeDialog = false
+                            }
+                        },
+                        enabled = mergeTargetAccount != null
+                    ) {
+                        Text("MERGE", color = Primary, fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showMergeDialog = false }) {
+                        Text("CANCEL", color = OnSurfaceVariant)
+                    }
+                },
+                containerColor = SurfaceContainer
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -215,6 +277,67 @@ fun WalletsScreen(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+
+            // Accounts Management Section
+            Text("FINANCIAL SOURCES", style = StarkTypography.labelSmall.copy(letterSpacing = 2.sp))
+            Spacer(modifier = Modifier.height(16.dp))
+            accounts.forEach { account ->
+                StarkClickableCard(
+                    onClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.AccountDetail.createRoute(account.id)) },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier.size(40.dp).clip(CircleShape).background(SurfaceContainerHighest),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = when(account.type) {
+                                        "BANK" -> Icons.Sharp.AccountBalance
+                                        "CARD" -> Icons.Sharp.CreditCard
+                                        "WALLET" -> Icons.Sharp.AccountBalanceWallet
+                                        else -> Icons.Sharp.Payments
+                                    },
+                                    contentDescription = null,
+                                    tint = Primary
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Column {
+                                Text(account.name, style = StarkTypography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                                Text(if (account.isActive) "Active" else "Hidden", style = StarkTypography.labelSmall, color = if (account.isActive) TertiaryContainer else OnSurfaceVariant)
+                            }
+                        }
+                        Row {
+                            IconButton(onClick = {
+                                mergeSourceAccount = account
+                                mergeTargetAccount = null
+                                showMergeDialog = true
+                            }) {
+                                Icon(Icons.Sharp.Merge, contentDescription = "Merge", tint = OnSurfaceVariant)
+                            }
+                            IconButton(onClick = {
+                                viewModel.updateAccount(account.copy(isActive = !account.isActive))
+                            }) {
+                                Icon(if (account.isActive) Icons.Sharp.Visibility else Icons.Sharp.VisibilityOff, contentDescription = "Toggle Visibility", tint = OnSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            StarkButton(
+                text = "ADD ACCOUNT",
+                onClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.AddAccount.route) },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(48.dp))
 
             // Warning Indicator Banner
             AnimatedVisibility(

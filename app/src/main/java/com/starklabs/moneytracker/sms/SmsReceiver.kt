@@ -52,9 +52,27 @@ class SmsReceiver : BroadcastReceiver() {
                             val merchant = parsed.merchant ?: "Unknown Merchant"
                             val transactionType = parsed.transactionType?.uppercase() ?: "DEBIT"
                             
-                            // 1. Find Account
+                            // 1. Find or Create Account
                             val matchedAccount = repository.findAccountForSms(parsed.accountLast4)
-                            val accountId = matchedAccount?.id ?: repository.getDefaultAccount()?.id ?: 1 // Fallback
+                            val accountId = if (matchedAccount != null) {
+                                matchedAccount.id
+                            } else {
+                                val last4 = parsed.accountLast4
+                                val bankName = parsed.bank ?: "Unknown"
+                                val accountType = when(parsed.patternUsed) {
+                                    com.starklabs.moneytracker.domain.SmsPattern.CARD_SPEND -> "CARD"
+                                    com.starklabs.moneytracker.domain.SmsPattern.WALLET_PAYMENT -> "WALLET"
+                                    else -> "BANK"
+                                }
+                                val newAccount = com.starklabs.moneytracker.data.Account(
+                                    name = if (last4 == null) bankName else "$bankName •••• $last4",
+                                    type = accountType,
+                                    balance = 0.0,
+                                    last4Digits = last4,
+                                    colorHex = "#FFD700"
+                                )
+                                repository.addAccount(newAccount).toInt()
+                            }
 
                             // 2. Find Category
                             val categoryId = repository.identifyCategory(merchant, parsed.rawMessage)

@@ -33,6 +33,14 @@ class DashboardViewModel(
     // No-op or remove completely. 
 
     val categories: StateFlow<List<Category>> = repository.allCategories.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val accounts: StateFlow<List<com.starklabs.moneytracker.data.Account>> = repository.allAccounts.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val selectedAccountId: StateFlow<Int> = appSettingsRepository.selectedAccountId.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), -1)
+
+    fun setSelectedAccount(id: Int) {
+        viewModelScope.launch {
+            appSettingsRepository.setSelectedAccountId(id)
+        }
+    }
 
     fun updateTransactionCategory(transactionId: Int, newCategoryId: Int, merchant: String) {
         viewModelScope.launch {
@@ -44,11 +52,16 @@ class DashboardViewModel(
         repository.allAccounts,
         repository.allTransactions,
         repository.allCategories,
-        appSettingsRepository.dashboardLogCount
-    ) { accounts, transactions, categories, logCount ->
+        appSettingsRepository.dashboardLogCount,
+        appSettingsRepository.selectedAccountId
+    ) { accounts, allTransactions, categories, logCount, selectedId ->
+
+        val transactions = if (selectedId == -1) allTransactions else allTransactions.filter { it.accountId == selectedId }
+
         
         // Total All-Time Balance
-        val totalBalance = accounts.sumOf { it.balance }
+        val totalBalance = if (selectedId == -1) accounts.sumOf { it.balance }
+                           else accounts.find { it.id == selectedId }?.balance ?: 0.0
         
         // Monthly Calculations
         val calendar = java.util.Calendar.getInstance()

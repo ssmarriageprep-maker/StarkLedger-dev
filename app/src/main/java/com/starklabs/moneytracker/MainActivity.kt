@@ -97,7 +97,7 @@ class MainActivity : AppCompatActivity() {
                         com.starklabs.moneytracker.ui.add.AddTransactionScreen(navController, repository)
                     }
                     composable(Screen.Analytics.route) {
-                        val factory = com.starklabs.moneytracker.ui.analytics.AnalyticsViewModelFactory(repository)
+                        val factory = com.starklabs.moneytracker.ui.analytics.AnalyticsViewModelFactory(repository, appSettingsRepository)
                         val viewModel: com.starklabs.moneytracker.ui.analytics.AnalyticsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
                         com.starklabs.moneytracker.ui.analytics.AnalyticsScreen(navController, viewModel)
                     }
@@ -113,9 +113,13 @@ class MainActivity : AppCompatActivity() {
                         com.starklabs.moneytracker.ui.settings.SettingsScreen(navController, repository, appSettingsRepository)
                     }
                     composable(Screen.History.route) {
-                        val factory = com.starklabs.moneytracker.ui.history.HistoryViewModelFactory(repository)
+                        val factory = com.starklabs.moneytracker.ui.history.HistoryViewModelFactory(repository, appSettingsRepository)
                         val viewModel: com.starklabs.moneytracker.ui.history.HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
                         com.starklabs.moneytracker.ui.history.HistoryScreen(navController, viewModel)
+                    }
+                    composable(Screen.AccountDetail.route) { backStackEntry ->
+                        val accountId = backStackEntry.arguments?.getString("accountId")?.toIntOrNull() ?: -1
+                        com.starklabs.moneytracker.ui.wallets.AccountDetailScreen(navController, accountId, repository)
                     }
                 }
                 }
