@@ -166,14 +166,18 @@ fun SettingsScreen(
                 SettingsItem(
                     icon = Icons.Sharp.Info,
                     title = "About StarkLabs",
-                    subtitle = "V2.4.0 • ENTERPRISE EDITION"
+                    subtitle = "V${com.starklabs.moneytracker.BuildConfig.VERSION_NAME} • STARKLABS"
                 )
             }
 
             // Logout Action
             Spacer(modifier = Modifier.height(48.dp))
             Button(
-                onClick = { },
+                onClick = {
+                    navController.navigate(com.starklabs.moneytracker.ui.Screen.Security.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                 border = BorderStroke(1.dp, Error.copy(alpha = 0.2f)),
                 shape = RoundedCornerShape(12.dp),
@@ -189,7 +193,7 @@ fun SettingsScreen(
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, PrimaryContainer, Color.Transparent))))
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "END-TO-END QUANTUM ENCRYPTION ENABLED",
+                text = "LOCAL ENCRYPTION • OFFLINE FIRST",
                 style = StarkTypography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 2.sp),
                 color = OnSurfaceVariant,
                 modifier = Modifier.fillMaxWidth(),

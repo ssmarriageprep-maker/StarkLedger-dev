@@ -18,7 +18,8 @@ data class DashboardState(
     val totalIncome: Double = 0.0,
     val balance: Double = 0.0,
     val recentTransactions: List<Transaction> = emptyList(),
-    val budgetProgress: Float = 0.0f
+    val budgetProgress: Float = 0.0f,
+    val monthlyChangePercent: Double = 0.0  // Month-over-month net flow change
 )
 
 class DashboardViewModel(
@@ -62,6 +63,24 @@ class DashboardViewModel(
         val s = currentMonthTransactions.filter { it.type == "DEBIT" }.sumOf { it.amount }
         val i = currentMonthTransactions.filter { it.type == "CREDIT" }.sumOf { it.amount }
         
+        // Previous month boundaries for month-over-month comparison
+        val prevMonthEnd = startOfMonth
+        calendar.add(java.util.Calendar.MONTH, -1)
+        val prevMonthStart = calendar.timeInMillis
+        val prevMonthTransactions = transactions.filter { it.date >= prevMonthStart && it.date < prevMonthEnd }
+        val prevSpent = prevMonthTransactions.filter { it.type == "DEBIT" }.sumOf { it.amount }
+        val prevIncome = prevMonthTransactions.filter { it.type == "CREDIT" }.sumOf { it.amount }
+        
+        val currentNet = i - s
+        val prevNet = prevIncome - prevSpent
+        val changePercent = if (prevNet != 0.0) {
+            ((currentNet - prevNet) / kotlin.math.abs(prevNet)) * 100.0
+        } else if (currentNet > 0.0) {
+            100.0
+        } else {
+            0.0
+        }
+        
         // Calculate Total Budget dynamically from Categories
         // Default to a reasonable fallback if no categories set
         val totalBudget = categories.sumOf { it.budgetLimit }.takeIf { it > 0 } ?: 25000.0
@@ -73,7 +92,8 @@ class DashboardViewModel(
             totalIncome = i,
             balance = totalBalance,
             recentTransactions = transactions.take(logCount),
-            budgetProgress = progress
+            budgetProgress = progress,
+            monthlyChangePercent = changePercent
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardState())
 

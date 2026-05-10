@@ -159,13 +159,18 @@ abstract class AppDatabase : RoomDatabase() {
 
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                // FALLBACK DESTRUCTIVE MIGRATION FOR DEVELOPMENT SPEED
-                val instance = Room.databaseBuilder(
+                val builder = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "moneytracker_db"
-                ).fallbackToDestructiveMigration()
-                .build()
+                )
+                // Only allow destructive migration in debug builds.
+                // In release, a missing migration will throw IllegalStateException
+                // (fail-loud) instead of silently wiping all user data.
+                if (com.starklabs.moneytracker.BuildConfig.DEBUG) {
+                    builder.fallbackToDestructiveMigration()
+                }
+                val instance = builder.build()
                 INSTANCE = instance
                 instance
             }

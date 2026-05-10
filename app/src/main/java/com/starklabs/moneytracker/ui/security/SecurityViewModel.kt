@@ -16,13 +16,18 @@ class SecurityViewModel(private val repository: SecurityRepository) : ViewModel(
         .map { it != null }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    val storedPin: StateFlow<String?> = repository.pinFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-
     fun savePin(pin: String) {
         viewModelScope.launch {
             repository.savePin(pin)
         }
+    }
+
+    /**
+     * Verifies the input PIN against the stored hash.
+     * Must be called from a coroutine scope.
+     */
+    suspend fun verifyPin(inputPin: String): Boolean {
+        return repository.verifyPin(inputPin)
     }
 }
 

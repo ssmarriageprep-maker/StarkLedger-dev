@@ -141,21 +141,27 @@ fun DashboardScreen(
                             )
                         }
                         Spacer(modifier = Modifier.height(16.dp))
+                        val changePercent = state.monthlyChangePercent
+                        val isPositive = changePercent >= 0
+                        val changeColor = if (isPositive) TertiaryContainer else Error
+                        val changeIcon = if (isPositive) Icons.Sharp.TrendingUp else Icons.Sharp.TrendingDown
+                        val changeSign = if (isPositive) "+" else ""
                         Surface(
-                            color = TertiaryContainer.copy(alpha = 0.1f),
+                            color = changeColor.copy(alpha = 0.1f),
                             shape = CircleShape,
-                            border = BorderStroke(1.dp, TertiaryContainer.copy(alpha = 0.2f))
+                            border = BorderStroke(1.dp, changeColor.copy(alpha = 0.2f))
                         ) {
+
                             Row(
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Sharp.TrendingUp, contentDescription = null, tint = TertiaryContainer, modifier = Modifier.size(14.dp))
+                                Icon(changeIcon, contentDescription = null, tint = changeColor, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "+12.4% this month",
+                                    text = "${changeSign}${String.format("%.1f", changePercent)}% this month",
                                     style = StarkTypography.labelSmall,
-                                    color = TertiaryContainer,
+                                    color = changeColor,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }

@@ -3,9 +3,7 @@ package com.starklabs.moneytracker.sms
 import android.content.Context
 import android.provider.Telephony
 import android.util.Log
-import com.starklabs.moneytracker.data.Account
 import com.starklabs.moneytracker.data.MoneyRepository
-import com.starklabs.moneytracker.data.Transaction
 import com.starklabs.moneytracker.domain.SmsParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.firstOrNull
@@ -24,6 +22,7 @@ object SmsScanner {
         )
 
         val sessionAccounts = mutableMapOf<String, Int>()
+        val seenHashes = mutableSetOf<String>()
         var transactionsCreated = 0
         var messagesRejected = 0
         var newAccountsCreated = 0
@@ -43,51 +42,20 @@ object SmsScanner {
                     val timestamp = it.getLong(dateIdx)
 
                     val parsed = SmsParser.parseSms(sender, body, timestamp)
-
-                    if (parsed.isTransaction && parsed.accountLast4 != null) {
-                        val last4 = parsed.accountLast4!!
-
-                        var accountId = sessionAccounts[last4]
-                        if (accountId == null) {
-                            val existingAccount = repository.findAccountForSms(last4)
-                            if (existingAccount != null) {
-                                accountId = existingAccount.id
-                            } else {
-                                val bankName = parsed.bank ?: "Bank"
-                                val newAccount = Account(
-                                    name = "$bankName - $last4",
-                                    type = "BANK",
-                                    balance = 0.0,
-                                    maskedNumber = last4,
-                                    colorHex = "#FFD700"
-                                )
-                                val id = repository.addAccount(newAccount)
-                                accountId = id.toInt()
-                                newAccountsCreated++
-                            }
-                            sessionAccounts[last4] = accountId
-                        }
-
-                        val amount = parsed.amount ?: 0.0
-                        if (amount > 0.0) {
-                            val merchant = parsed.merchant ?: "Unknown Merchant"
-                            val transactionType = parsed.transactionType?.uppercase() ?: "DEBIT"
-
-                            val transaction = Transaction(
-                                amount = amount,
-                                merchant = merchant,
-                                date = timestamp,
-                                type = transactionType,
-                                smsBody = body,
-                                accountId = accountId,
-                                categoryId = repository.identifyCategory(merchant, body, categories)
-                            )
-
-                            repository.addTransaction(transaction)
+                    when (val result = TransactionProcessor.process(
+                        parsed = parsed,
+                        timestamp = timestamp,
+                        body = body,
+                        repository = repository,
+                        sessionAccounts = sessionAccounts,
+                        categories = categories,
+                        seenHashes = seenHashes
+                    )) {
+                        is TransactionProcessor.Result.Created -> {
                             transactionsCreated++
+                            if (result.newAccountCreated) newAccountsCreated++
                         }
-                    } else {
-                        messagesRejected++
+                        is TransactionProcessor.Result.Skipped -> messagesRejected++
                     }
                 } catch (e: Exception) {
                     Log.e("SmsScanner", "Error processing message", e)

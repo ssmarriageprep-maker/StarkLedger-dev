@@ -19,11 +19,12 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.starklabs.moneytracker.ui.Screen
 import com.starklabs.moneytracker.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun SecurityScreen(navController: NavController, viewModel: SecurityViewModel) {
     val isPinSet by viewModel.isPinSet.collectAsState()
-    val storedPin by viewModel.storedPin.collectAsState()
+    val scope = rememberCoroutineScope()
     
     var pin by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(false) }
@@ -103,13 +104,16 @@ fun SecurityScreen(navController: NavController, viewModel: SecurityViewModel) {
                                             popUpTo(Screen.Security.route) { inclusive = true }
                                         }
                                     } else {
-                                        if (pin == storedPin) {
-                                            navController.navigate(Screen.Dashboard.route) {
-                                                popUpTo(Screen.Security.route) { inclusive = true }
+                                        val enteredPin = pin
+                                        scope.launch {
+                                            if (viewModel.verifyPin(enteredPin)) {
+                                                navController.navigate(Screen.Dashboard.route) {
+                                                    popUpTo(Screen.Security.route) { inclusive = true }
+                                                }
+                                            } else {
+                                                error = true
+                                                pin = ""
                                             }
-                                        } else {
-                                            error = true
-                                            pin = ""
                                         }
                                     }
                                 }
