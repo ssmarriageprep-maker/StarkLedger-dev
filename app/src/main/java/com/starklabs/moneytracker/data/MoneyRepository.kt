@@ -6,6 +6,8 @@ import com.starklabs.moneytracker.data.TransactionDao
 import com.starklabs.moneytracker.data.MerchantCategoryMappingDao
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
+import java.util.concurrent.ConcurrentHashMap
+import java.util.regex.Pattern
 
 class MoneyRepository(
     private val transactionDao: TransactionDao,
@@ -13,6 +15,10 @@ class MoneyRepository(
     private val categoryDao: CategoryDao,
     private val merchantMappingDao: MerchantCategoryMappingDao
 ) {
+    // Optimization: Cache compiled patterns for category and keyword matching to avoid
+    // thousands of redundant Regex compilations during bulk SMS scans.
+    private val patternCache = ConcurrentHashMap<String, Pattern>()
+
     // Transactions
     val allTransactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
     val totalSpent: Flow<Double?> = transactionDao.getTotalSpent()
@@ -116,13 +122,14 @@ class MoneyRepository(
         val text = "$merchant $body".lowercase()
         
         // 2. Check if merchant matches category name exactly
-        categories.find {
-            // Using a simple contains check before doing regex if possible,
-            // or just use a more efficient way to match.
-            // For performance, we'll use a pre-compiled regex if we were to do this at scale,
-            // but since we are in a suspend function, we'll at least avoid redundant DB calls.
-            text.contains(it.name.lowercase()) &&
-            text.contains(Regex("\\b${it.name.lowercase()}\\b"))
+        categories.find { category ->
+            val name = category.name.lowercase()
+            if (text.contains(name)) {
+                val pattern = patternCache.getOrPut("\\b$name\\b") {
+                    Pattern.compile("\\b$name\\b")
+                }
+                pattern.matcher(text).find()
+            } else false
         }?.let { return it.id }
         
         // 3. Check keywords with strict word boundaries
@@ -130,7 +137,10 @@ class MoneyRepository(
             cat.keywords?.split(",")?.forEach { keyword ->
                 val kw = keyword.trim().lowercase()
                 if (kw.isNotBlank() && text.contains(kw)) {
-                    if (text.contains(Regex("\\b$kw\\b"))) {
+                    val pattern = patternCache.getOrPut("\\b$kw\\b") {
+                        Pattern.compile("\\b$kw\\b")
+                    }
+                    if (pattern.matcher(text).find()) {
                         return cat.id
                     }
                 }
