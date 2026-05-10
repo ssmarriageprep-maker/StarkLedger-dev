@@ -128,7 +128,7 @@ fun AddAccountScreen(
                                  name = name,
                                  type = type,
                                  balance = balance.toDoubleOrNull() ?: 0.0,
-                                 maskedNumber = if (last4.isNotBlank()) last4 else null,
+                                 last4Digits = if (last4.isNotBlank()) last4 else null,
                                  colorHex = when(type) {
                                      "BANK" -> "#FFD60A"
                                      "CREDIT_CARD" -> "#FF453A"

@@ -8,6 +8,8 @@ import com.starklabs.moneytracker.data.Transaction
 import com.starklabs.moneytracker.ui.theme.NeonCyan
 import androidx.compose.ui.graphics.Color
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -26,16 +28,6 @@ data class CategoryPerformance(
     val percentage: Float
 )
 
-data class TransactionDisplay(
-    val id: Int,
-    val amount: Double,
-    val merchant: String,
-    val date: Long,
-    val type: String,
-    val categoryName: String,
-    val categoryColor: Color
-)
-
 data class AnalyticsState(
     val pieSlices: List<Slice> = emptyList(),
     val weeklySpending: List<Float> = emptyList(), // Last 7 days
@@ -45,16 +37,30 @@ data class AnalyticsState(
     val categoryPerformance: List<CategoryPerformance> = emptyList(),
     val pulseTitle: String = "Calculating Pulse...",
     val pulseDescription: String = "Analyzing your spending patterns...",
-    val pulseColor: Color = Color(0xFFFEB300), // SecondaryContainer
-    val recentTransactions: List<TransactionDisplay> = emptyList()
+    val pulseColor: Color = Color(0xFFFEB300) // SecondaryContainer
 )
 
-class AnalyticsViewModel(private val repository: MoneyRepository) : ViewModel() {
+class AnalyticsViewModel(
+    private val repository: MoneyRepository,
+    private val appSettingsRepository: com.starklabs.moneytracker.data.AppSettingsRepository
+) : ViewModel() {
+
+    val accounts: StateFlow<List<com.starklabs.moneytracker.data.Account>> = repository.allAccounts.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val selectedAccountId: StateFlow<Int> = appSettingsRepository.selectedAccountId.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), -1)
+
+    fun setSelectedAccount(id: Int) {
+        viewModelScope.launch {
+            appSettingsRepository.setSelectedAccountId(id)
+        }
+    }
 
     val uiState = combine(
         repository.allTransactions,
-        repository.allCategories
-    ) { transactions, categories ->
+        repository.allCategories,
+        appSettingsRepository.selectedAccountId
+    ) { allTransactions, categories, selectedId ->
+
+        val transactions = if (selectedId == -1) allTransactions else allTransactions.filter { it.accountId == selectedId }
         
         val calendar = java.util.Calendar.getInstance()
         calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
@@ -165,25 +171,16 @@ class AnalyticsViewModel(private val repository: MoneyRepository) : ViewModel() 
             categoryPerformance = performance,
             pulseTitle = pulseTitle,
             pulseDescription = pulseDescription,
-            pulseColor = pulseColor,
-            recentTransactions = transactions.take(10).map { t ->
-                val category = categories.find { it.id == t.categoryId }
-                TransactionDisplay(
-                    id = t.id,
-                    amount = t.amount,
-                    merchant = t.merchant,
-                    date = t.date,
-                    type = t.type,
-                    categoryName = category?.name ?: "Uncategorized",
-                    categoryColor = try { Color(android.graphics.Color.parseColor(category?.colorHex ?: "#808080")) } catch (e: Exception) { Color.Gray }
-                )
-            }
+            pulseColor = pulseColor
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AnalyticsState())
 }
 
-class AnalyticsViewModelFactory(private val repository: MoneyRepository) : ViewModelProvider.Factory {
+class AnalyticsViewModelFactory(
+    private val repository: MoneyRepository,
+    private val appSettingsRepository: com.starklabs.moneytracker.data.AppSettingsRepository
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return AnalyticsViewModel(repository) as T
+        return AnalyticsViewModel(repository, appSettingsRepository) as T
     }
 }

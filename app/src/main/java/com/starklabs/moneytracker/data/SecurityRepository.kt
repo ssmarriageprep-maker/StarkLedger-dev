@@ -15,15 +15,6 @@ class SecurityRepository(private val context: Context) {
 
     companion object {
         private val PIN_KEY = stringPreferencesKey("user_pin")
-
-        /**
-         * One-way SHA-256 hash so the raw PIN is never stored.
-         */
-        private fun hashPin(pin: String): String {
-            val digest = MessageDigest.getInstance("SHA-256")
-            val bytes = digest.digest(pin.toByteArray(Charsets.UTF_8))
-            return bytes.joinToString("") { "%02x".format(it) }
-        }
     }
 
     val pinFlow: Flow<String?> = context.dataStore.data.map { preferences ->
@@ -34,8 +25,9 @@ class SecurityRepository(private val context: Context) {
      * Stores the SHA-256 hash of the PIN, never the raw value.
      */
     suspend fun savePin(pin: String) {
+        val hashedPin = hashPin(pin)
         context.dataStore.edit { preferences ->
-            preferences[PIN_KEY] = hashPin(pin)
+            preferences[PIN_KEY] = hashedPin
         }
     }
 
@@ -44,9 +36,27 @@ class SecurityRepository(private val context: Context) {
      * Returns true if the PIN matches, false otherwise (including when no PIN is set).
      */
     suspend fun verifyPin(inputPin: String): Boolean {
-        val storedHash = context.dataStore.data
-            .map { it[PIN_KEY] }
-            .first()
-        return storedHash != null && storedHash == hashPin(inputPin)
+        val preferences = context.dataStore.data.first()
+        val storedPin = preferences[PIN_KEY] ?: return false
+
+        // 1. Check if it matches as a salted hash (new format)
+        val hashedInput = hashPin(inputPin)
+        if (storedPin == hashedInput) return true
+
+        // 2. Migration: Check if it matches as plaintext (old format - 4 digits)
+        if (storedPin.length == 4 && storedPin == inputPin) {
+            // Automatically migrate to salted hash
+            savePin(inputPin)
+            return true
+        }
+
+        return false
+    }
+
+    private fun hashPin(pin: String): String {
+        val salt = "STARK_LEDGER_2024_SALT" // Static salt to prevent simple rainbow tables
+        val digest = MessageDigest.getInstance("SHA-256")
+        val bytes = digest.digest((salt + pin).toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }
     }
 }

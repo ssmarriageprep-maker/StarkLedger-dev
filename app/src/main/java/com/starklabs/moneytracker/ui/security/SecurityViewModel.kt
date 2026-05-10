@@ -22,10 +22,6 @@ class SecurityViewModel(private val repository: SecurityRepository) : ViewModel(
         }
     }
 
-    /**
-     * Verifies the input PIN against the stored hash.
-     * Must be called from a coroutine scope.
-     */
     suspend fun verifyPin(inputPin: String): Boolean {
         return repository.verifyPin(inputPin)
     }
