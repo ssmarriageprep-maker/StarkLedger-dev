@@ -20,6 +20,7 @@ import androidx.navigation.NavController
 import kotlinx.coroutines.launch
 import com.starklabs.moneytracker.ui.Screen
 import com.starklabs.moneytracker.ui.theme.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun SecurityScreen(navController: NavController, viewModel: SecurityViewModel) {
@@ -104,8 +105,9 @@ fun SecurityScreen(navController: NavController, viewModel: SecurityViewModel) {
                                             popUpTo(Screen.Security.route) { inclusive = true }
                                         }
                                     } else {
+                                        val enteredPin = pin
                                         scope.launch {
-                                            if (viewModel.verifyPin(pin)) {
+                                            if (viewModel.verifyPin(enteredPin)) {
                                                 navController.navigate(Screen.Dashboard.route) {
                                                     popUpTo(Screen.Security.route) { inclusive = true }
                                                 }

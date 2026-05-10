@@ -22,8 +22,8 @@ class SecurityViewModel(private val repository: SecurityRepository) : ViewModel(
         }
     }
 
-    suspend fun verifyPin(pin: String): Boolean {
-        return repository.verifyPin(pin)
+    suspend fun verifyPin(inputPin: String): Boolean {
+        return repository.verifyPin(inputPin)
     }
 }
 

@@ -21,6 +21,9 @@ class SecurityRepository(private val context: Context) {
         preferences[PIN_KEY]
     }
 
+    /**
+     * Stores the SHA-256 hash of the PIN, never the raw value.
+     */
     suspend fun savePin(pin: String) {
         val hashedPin = hashPin(pin)
         context.dataStore.edit { preferences ->
@@ -28,6 +31,10 @@ class SecurityRepository(private val context: Context) {
         }
     }
 
+    /**
+     * Verifies an input PIN against the stored hash.
+     * Returns true if the PIN matches, false otherwise (including when no PIN is set).
+     */
     suspend fun verifyPin(inputPin: String): Boolean {
         val preferences = context.dataStore.data.first()
         val storedPin = preferences[PIN_KEY] ?: return false

@@ -6,7 +6,6 @@ import androidx.activity.compose.setContent
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.starklabs.moneytracker.data.AppDatabase
 import com.starklabs.moneytracker.data.MoneyRepository
 import com.starklabs.moneytracker.ui.Screen
 import com.starklabs.moneytracker.ui.home.DashboardScreen
@@ -40,13 +39,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        val database = AppDatabase.getDatabase(this)
-        repository = MoneyRepository(
-            database.transactionDao(),
-            database.accountDao(),
-            database.categoryDao(),
-            database.merchantMappingDao()
-        )
+        repository = MoneyRepository.getInstance(this)
         val securityRepository = com.starklabs.moneytracker.data.SecurityRepository(this)
         appSettingsRepository = AppSettingsRepository(this)
         

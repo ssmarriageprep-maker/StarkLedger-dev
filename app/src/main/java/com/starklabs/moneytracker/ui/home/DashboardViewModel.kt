@@ -19,6 +19,7 @@ data class DashboardState(
     val balance: Double = 0.0,
     val recentTransactions: List<Transaction> = emptyList(),
     val budgetProgress: Float = 0.0f,
+    val monthlyChangePercent: Double = 0.0, // Month-over-month net flow change
     val spendingTrend: List<Float> = emptyList()
 )
 
@@ -76,18 +77,41 @@ class DashboardViewModel(
         val s = currentMonthTransactions.filter { it.type == "DEBIT" }.sumOf { it.amount }
         val i = currentMonthTransactions.filter { it.type == "CREDIT" }.sumOf { it.amount }
         
+        // Previous month boundaries for month-over-month comparison
+        val prevMonthEnd = startOfMonth
+        calendar.add(java.util.Calendar.MONTH, -1)
+        val prevMonthStart = calendar.timeInMillis
+        val prevMonthTransactions = transactions.filter { it.date >= prevMonthStart && it.date < prevMonthEnd }
+        val prevSpent = prevMonthTransactions.filter { it.type == "DEBIT" }.sumOf { it.amount }
+        val prevIncome = prevMonthTransactions.filter { it.type == "CREDIT" }.sumOf { it.amount }
+        
+        val currentNet = i - s
+        val prevNet = prevIncome - prevSpent
+        val changePercent = if (prevNet != 0.0) {
+            ((currentNet - prevNet) / kotlin.math.abs(prevNet)) * 100.0
+        } else if (currentNet > 0.0) {
+            100.0
+        } else {
+            0.0
+        }
+        
         // Calculate Total Budget dynamically from Categories
         // Default to a reasonable fallback if no categories set
         val totalBudget = categories.sumOf { it.budgetLimit }.takeIf { it > 0 } ?: 25000.0
         
         val progress = (s / totalBudget).coerceIn(0.0, 1.0).toFloat()
 
-        // Calculate 7-day spending trend
-        val now = System.currentTimeMillis()
-        val dayMillis = 24 * 60 * 60 * 1000L
-        val last7Days = (0..6).map { i ->
-            val dayStart = now - (i * dayMillis)
-            val dayEnd = dayStart + dayMillis
+        // Calculate 7-day spending trend based on calendar days
+        val trendCalendar = java.util.Calendar.getInstance()
+        trendCalendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        trendCalendar.set(java.util.Calendar.MINUTE, 0)
+        trendCalendar.set(java.util.Calendar.SECOND, 0)
+        trendCalendar.set(java.util.Calendar.MILLISECOND, 0)
+        
+        val last7Days = (0..6).map { _ ->
+            val dayEnd = trendCalendar.timeInMillis + 86400000L
+            val dayStart = trendCalendar.timeInMillis
+            trendCalendar.add(java.util.Calendar.DAY_OF_MONTH, -1)
             transactions.filter { it.date in dayStart until dayEnd && it.type == "DEBIT" }.sumOf { it.amount }
         }.reversed()
 
@@ -100,6 +124,7 @@ class DashboardViewModel(
             balance = totalBalance,
             recentTransactions = transactions.take(logCount),
             budgetProgress = progress,
+            monthlyChangePercent = changePercent,
             spendingTrend = trend
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), DashboardState())

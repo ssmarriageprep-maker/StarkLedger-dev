@@ -1,5 +1,6 @@
 package com.starklabs.moneytracker.data
 
+import android.content.Context
 import com.starklabs.moneytracker.data.AccountDao
 import com.starklabs.moneytracker.data.CategoryDao
 import com.starklabs.moneytracker.data.TransactionDao
@@ -15,18 +16,43 @@ class MoneyRepository(
     private val categoryDao: CategoryDao,
     private val merchantMappingDao: MerchantCategoryMappingDao
 ) {
-    // Optimization: Cache compiled patterns for category and keyword matching to avoid
-    // thousands of redundant Regex compilations during bulk SMS scans.
+    // Cache compiled patterns for category/keyword matching to avoid thousands
+    // of redundant Regex compilations during bulk SMS scans.
     private val patternCache = ConcurrentHashMap<String, Pattern>()
+
+    companion object {
+        @Volatile
+        private var INSTANCE: MoneyRepository? = null
+
+        fun getInstance(context: Context): MoneyRepository {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: run {
+                    val db = AppDatabase.getDatabase(context.applicationContext)
+                    MoneyRepository(
+                        db.transactionDao(),
+                        db.accountDao(),
+                        db.categoryDao(),
+                        db.merchantMappingDao()
+                    ).also { INSTANCE = it }
+                }
+            }
+        }
+    }
 
     // Transactions
     val allTransactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
     val totalSpent: Flow<Double?> = transactionDao.getTotalSpent()
     val totalIncome: Flow<Double?> = transactionDao.getTotalIncome()
 
-    suspend fun addTransaction(transaction: Transaction, smsBalance: Double? = null) {
-        transactionDao.insert(transaction)
-        // Update account balance
+    /**
+     * Inserts a transaction and updates the account balance.
+     * Returns the inserted row ID, or -1 if the row was ignored due to a conflict.
+     * Account balance is only adjusted when an insert actually happened.
+     */
+    suspend fun addTransaction(transaction: Transaction, smsBalance: Double? = null): Long {
+        val rowId = transactionDao.insert(transaction)
+        if (rowId == -1L) return rowId
+
         if (smsBalance != null) {
             val account = accountDao.getAccountById(transaction.accountId)
             if (account != null) {
@@ -40,6 +66,7 @@ class MoneyRepository(
                 accountDao.addBalance(transaction.accountId, transaction.amount)
             }
         }
+        return rowId
     }
 
     suspend fun deleteTransaction(transaction: Transaction) {

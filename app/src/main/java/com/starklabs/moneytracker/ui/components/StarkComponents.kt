@@ -286,12 +286,15 @@ fun GlobalAccountSelector(
 
 fun formatStarkDate(timestamp: Long): String {
     val sdf = java.text.SimpleDateFormat("dd MMM", java.util.Locale.getDefault())
-    val now = java.util.Calendar.getInstance()
-    val date = java.util.Calendar.getInstance().apply { timeInMillis = timestamp }
+    val nowMillis = System.currentTimeMillis()
 
-    return when {
-        now.get(java.util.Calendar.DATE) == date.get(java.util.Calendar.DATE) -> "Today"
-        now.get(java.util.Calendar.DATE) - 1 == date.get(java.util.Calendar.DATE) -> "Yesterday"
+    // Compare by calendar day using epoch-day to avoid month-boundary bugs
+    val nowDay = nowMillis / 86_400_000L
+    val dateDay = timestamp / 86_400_000L
+
+    return when (nowDay - dateDay) {
+        0L -> "Today"
+        1L -> "Yesterday"
         else -> sdf.format(java.util.Date(timestamp))
     }
 }

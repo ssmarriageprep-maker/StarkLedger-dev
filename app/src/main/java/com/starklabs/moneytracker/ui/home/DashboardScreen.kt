@@ -162,6 +162,43 @@ fun DashboardScreen(
                                 color = TertiaryContainer,
                                 fontWeight = FontWeight.SemiBold
                             )
+
+                            Text(
+                                text = String.format("%,.2f", state.balance),
+                                style = StarkTypography.displayLarge.copy(
+                                    fontSize = if (state.balance > 1000000) 40.sp else 56.sp
+                                ),
+                                color = OnSurface,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        val changePercent = state.monthlyChangePercent
+                        val isPositive = changePercent >= 0
+                        val changeColor = if (isPositive) TertiaryContainer else Error
+                        val changeIcon = if (isPositive) Icons.Sharp.TrendingUp else Icons.Sharp.TrendingDown
+                        val changeSign = if (isPositive) "+" else ""
+                        Surface(
+                            color = changeColor.copy(alpha = 0.1f),
+                            shape = CircleShape,
+                            border = BorderStroke(1.dp, changeColor.copy(alpha = 0.2f))
+                        ) {
+
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(changeIcon, contentDescription = null, tint = changeColor, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "${changeSign}${String.format("%.1f", changePercent)}% this month",
+                                    style = StarkTypography.labelSmall,
+                                    color = changeColor,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
                         }
                     }
                 }
@@ -169,7 +206,33 @@ fun DashboardScreen(
 
             // 2. Bento Grid
             item {
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // Spending Trend Chart (New UI Component)
+                    StarkCard(
+                        modifier = Modifier.fillMaxWidth().height(120.dp),
+                        backgroundColor = SurfaceContainerLow,
+                        cornerRadius = 24.dp,
+                        contentPadding = PaddingValues(16.dp)
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Column {
+                                Text("VELOCITY TREND", style = StarkTypography.labelSmall.copy(letterSpacing = 1.sp, color = PrimaryFixedDim))
+                                Text("7-Day Pulse", style = StarkTypography.bodySmall, color = OnSurfaceVariant)
+                            }
+                            Icon(Icons.Sharp.Timeline, contentDescription = null, tint = PrimaryFixedDim, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        GlowingLineChart(
+                            data = state.spendingTrend,
+                            modifier = Modifier.fillMaxWidth().height(40.dp),
+                            lineColor = PrimaryFixedDim,
+                            fillStartColor = PrimaryFixedDim.copy(alpha = 0.1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Row(modifier = Modifier.fillMaxWidth()) {
                     // Left Column: Income vs Expenses
                     Column(modifier = Modifier.weight(2f)) {
                         // Income Card
@@ -259,6 +322,7 @@ fun DashboardScreen(
                                 )
                             }
                         }
+                    }
                     }
                 }
             }
