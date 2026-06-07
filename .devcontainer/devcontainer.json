@@ -1,0 +1,11 @@
+{
+  "name": "My Codespace",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "chat.tools.global.autoApprove": true,
+        "chat.tools.terminal.enableAutoApprove": true
+      }
+    }
+  }
+}
