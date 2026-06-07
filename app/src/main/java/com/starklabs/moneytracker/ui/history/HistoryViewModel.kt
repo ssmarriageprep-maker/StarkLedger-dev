@@ -6,6 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.starklabs.moneytracker.data.MoneyRepository
 import com.starklabs.moneytracker.data.Transaction
 import com.starklabs.moneytracker.data.Category
+import com.starklabs.moneytracker.domain.FilterDimension
+import com.starklabs.moneytracker.domain.TransactionFilter
+import com.starklabs.moneytracker.domain.TransactionFilterEngine
+import com.starklabs.moneytracker.domain.TransactionFilterStore
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -18,7 +22,8 @@ data class HistoryState(
 
 class HistoryViewModel(
     private val repository: MoneyRepository,
-    private val appSettingsRepository: com.starklabs.moneytracker.data.AppSettingsRepository
+    private val appSettingsRepository: com.starklabs.moneytracker.data.AppSettingsRepository,
+    private val filterStore: TransactionFilterStore
 ) : ViewModel() {
 
     val selectedAccountId: StateFlow<Int> = appSettingsRepository.selectedAccountId.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), -1)
@@ -32,18 +37,30 @@ class HistoryViewModel(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    /** Shared advanced-filter state — same instance Analytics reads, so filters persist across screens. */
+    val filter: StateFlow<TransactionFilter> = filterStore.filter
+
+    fun applyFilter(newFilter: TransactionFilter) = filterStore.update(newFilter)
+
+    fun clearFilterDimension(dimension: FilterDimension) = filterStore.clearDimension(dimension)
+
+    fun clearAllFilters() = filterStore.clear()
+
     val uiState: StateFlow<HistoryState> = combine(
         repository.allTransactions,
         _searchQuery,
-        appSettingsRepository.selectedAccountId
-    ) { allTransactions, query, selectedId ->
+        appSettingsRepository.selectedAccountId,
+        filterStore.filter
+    ) { allTransactions, query, selectedId, activeFilter ->
 
         val transactionsByAccount = if (selectedId == -1) allTransactions else allTransactions.filter { it.accountId == selectedId }
 
+        val advancedFiltered = TransactionFilterEngine.apply(transactionsByAccount, activeFilter)
+
         val filtered = if (query.isBlank()) {
-            transactionsByAccount
+            advancedFiltered
         } else {
-            transactionsByAccount.filter {
+            advancedFiltered.filter {
                 it.merchant.contains(query, ignoreCase = true) ||
                 (it.smsBody?.contains(query, ignoreCase = true) ?: false) ||
                 it.amount.toString().contains(query)
@@ -61,7 +78,7 @@ class HistoryViewModel(
     fun onSearchQueryChange(newQuery: String) {
         _searchQuery.value = newQuery
     }
-    
+
     val categories: StateFlow<List<Category>> = repository.allCategories.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val accounts: StateFlow<List<com.starklabs.moneytracker.data.Account>> = repository.allAccounts.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -80,12 +97,13 @@ class HistoryViewModel(
 
 class HistoryViewModelFactory(
     private val repository: MoneyRepository,
-    private val appSettingsRepository: com.starklabs.moneytracker.data.AppSettingsRepository
+    private val appSettingsRepository: com.starklabs.moneytracker.data.AppSettingsRepository,
+    private val filterStore: TransactionFilterStore
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HistoryViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return HistoryViewModel(repository, appSettingsRepository) as T
+            return HistoryViewModel(repository, appSettingsRepository, filterStore) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

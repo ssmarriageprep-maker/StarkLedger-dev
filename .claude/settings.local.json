@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh pr *)",
+      "Bash(curl -s \"https://api.github.com/repos/ssmarriageprep-maker/StarkLedger-dev/pulls?state=open\")",
+      "Bash(python3 -c ' *)",
+      "Bash(node -e ' *)",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "Bash(git merge *)",
+      "Bash(git branch *)",
+      "Bash(git ls-tree *)",
+      "Bash(xxd)",
+      "Bash(awk '/^ *)",
+      "Bash(cd /workspaces/StarkLedger-dev *)",
+      "Bash(git rm *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git commit *)",
+      "Read(//tmp/**)",
+      "Bash(git pull *)",
+      "Bash(find ~ /root /home -iname \"*material-icons-core*\" 2>/dev/null | head -20)",
+      "Read(//home/vscode/**)",
+      "Bash(./gradlew :app:testDebugUnitTest --tests \"com.starklabs.moneytracker.TransactionFilterTest\" --tests \"com.starklabs.moneytracker.YearlyAnalyticsEngineTest\" --tests \"com.starklabs.moneytracker.AccountAnalyticsEngineTest\" --console=plain)",
+      "Read(//usr/lib/**)",
+      "Bash(find / -maxdepth 4 -iname \"*jdk*\" -o -iname \"*java-*\")",
+      "Bash(apt list *)",
+      "Bash(apt-get install *)",
+      "Bash(sudo apt-get install -y openjdk-17-jdk-headless)",
+      "Bash(sudo apt-get update)",
+      "Bash(mkdir -p ~/android-sdk)",
+      "Bash(wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip)",
+      "Bash(unzip -q cmdline-tools.zip)",
+      "Bash(rm cmdline-tools.zip)",
+      "Bash(mkdir -p cmdline-tools/latest)",
+      "Bash(git reset *)"
+    ],
+    "additionalDirectories": [
+      "/workspaces/StarkLedger-dev/.github/workflows"
+    ]
+  }
+}
