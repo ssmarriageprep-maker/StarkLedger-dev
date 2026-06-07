@@ -129,6 +129,8 @@ class MoneyRepository(
     val allCategories: Flow<List<Category>> = categoryDao.getAllCategories()
     suspend fun addCategory(category: Category) = categoryDao.insert(category)
     suspend fun updateCategory(category: Category) = categoryDao.insert(category) // insert with REPLACE acts as update
+    // Transactions referencing this category have categoryId set to NULL (FK onDelete = SET_NULL).
+    suspend fun deleteCategory(category: Category) = categoryDao.delete(category)
     
     
     // Smart Category Matching

@@ -25,18 +25,19 @@ import kotlinx.coroutines.launch
 @Composable
 fun SecurityScreen(navController: NavController, viewModel: SecurityViewModel) {
     val isPinSet by viewModel.isPinSet.collectAsState()
+    val isBiometricEnabled by viewModel.isBiometricEnabled.collectAsState()
     val scope = rememberCoroutineScope()
-    
+
     var pin by remember { mutableStateOf("") }
     var error by remember { mutableStateOf(false) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
-    
-    LaunchedEffect(isPinSet) {
+
+    LaunchedEffect(isPinSet, isBiometricEnabled) {
         pin = ""
         error = false
-        
-        if (isPinSet == true) {
+
+        if (isPinSet == true && isBiometricEnabled) {
              val activity = context as? androidx.fragment.app.FragmentActivity
              if (activity != null && BiometricHelper.isBiometricAvailable(context)) {
                  BiometricHelper.authenticate(activity, 

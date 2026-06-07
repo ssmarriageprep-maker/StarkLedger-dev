@@ -105,6 +105,11 @@ class MainActivity : AppCompatActivity() {
                     composable(Screen.Settings.route) {
                         com.starklabs.moneytracker.ui.settings.SettingsScreen(navController, repository, appSettingsRepository)
                     }
+                    composable(Screen.Categories.route) {
+                        val factory = com.starklabs.moneytracker.ui.categories.CategoriesViewModelFactory(repository)
+                        val viewModel: com.starklabs.moneytracker.ui.categories.CategoriesViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
+                        com.starklabs.moneytracker.ui.categories.CategoriesScreen(navController, viewModel)
+                    }
                     composable(Screen.History.route) {
                         val factory = com.starklabs.moneytracker.ui.history.HistoryViewModelFactory(repository, appSettingsRepository)
                         val viewModel: com.starklabs.moneytracker.ui.history.HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)

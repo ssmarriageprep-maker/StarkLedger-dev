@@ -99,6 +99,10 @@ fun SettingsScreen(
         }
     }
 
+    // Biometric lock preference (persisted in SecurityRepository / DataStore).
+    val securityRepository = remember { com.starklabs.moneytracker.data.SecurityRepository(context) }
+    val biometricEnabled by securityRepository.biometricEnabledFlow.collectAsState(initial = true)
+
     val factory = AppSettingsViewModelFactory(appSettingsRepository)
     val viewModel: AppSettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
 
@@ -187,10 +191,18 @@ fun SettingsScreen(
                     icon = Icons.Sharp.Fingerprint,
                     title = "Biometric Lock",
                     subtitle = "ENHANCED SECURITY",
+                    onClick = { scope.launch { securityRepository.setBiometricEnabled(!biometricEnabled) } },
                     trailing = {
-                         Box(modifier = Modifier.size(width = 40.dp, height = 20.dp).clip(RoundedCornerShape(10.dp)).background(OutlineVariant.copy(alpha = 0.3f))) {
-                            Box(modifier = Modifier.padding(2.dp).size(16.dp).clip(RoundedCornerShape(8.dp)).background(Outline))
-                         }
+                        Switch(
+                            checked = biometricEnabled,
+                            onCheckedChange = { scope.launch { securityRepository.setBiometricEnabled(it) } },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = OnPrimary,
+                                checkedTrackColor = PrimaryContainer,
+                                uncheckedThumbColor = Outline,
+                                uncheckedTrackColor = OutlineVariant.copy(alpha = 0.3f)
+                            )
+                        )
                     }
                 )
 
@@ -215,6 +227,15 @@ fun SettingsScreen(
                             Text("Active", style = StarkTypography.labelLarge.copy(color = PrimaryFixedDim, fontSize = 12.sp), modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
                         }
                     }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsItem(
+                    icon = Icons.Sharp.Category,
+                    title = "Manage Categories",
+                    subtitle = "BUDGETS & KEYWORDS",
+                    onClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Categories.route) }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))

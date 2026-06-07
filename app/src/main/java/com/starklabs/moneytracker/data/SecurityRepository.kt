@@ -1,6 +1,7 @@
 package com.starklabs.moneytracker.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -15,10 +16,26 @@ class SecurityRepository(private val context: Context) {
 
     companion object {
         private val PIN_KEY = stringPreferencesKey("user_pin")
+        private val BIOMETRIC_ENABLED_KEY = booleanPreferencesKey("biometric_enabled")
     }
 
     val pinFlow: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[PIN_KEY]
+    }
+
+    /**
+     * Whether biometric unlock is enabled. Defaults to true so existing behavior
+     * (prompt biometric when hardware is available) is preserved until the user
+     * turns it off from Settings.
+     */
+    val biometricEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[BIOMETRIC_ENABLED_KEY] ?: true
+    }
+
+    suspend fun setBiometricEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[BIOMETRIC_ENABLED_KEY] = enabled
+        }
     }
 
     /**

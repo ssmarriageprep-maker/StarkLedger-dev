@@ -299,9 +299,9 @@ fun WalletsScreen(
                                 Icon(
                                     imageVector = when(account.type) {
                                         "BANK" -> Icons.Sharp.AccountBalance
-                                        "CARD" -> Icons.Sharp.CreditCard
-                                        "WALLET" -> Icons.Sharp.AccountBalanceWallet
-                                        else -> Icons.Sharp.Payments
+                                        "CREDIT_CARD", "CARD" -> Icons.Sharp.CreditCard
+                                        "UPI", "WALLET" -> Icons.Sharp.AccountBalanceWallet
+                                        else -> Icons.Sharp.Payments // CASH and unknown
                                     },
                                     contentDescription = null,
                                     tint = Primary
