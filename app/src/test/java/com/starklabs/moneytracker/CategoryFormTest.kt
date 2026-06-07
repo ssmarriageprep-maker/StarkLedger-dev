@@ -69,4 +69,32 @@ class CategoryFormTest {
         assertEquals("swiggy,zomato", r.value.keywords)
         assertEquals("#00E6FF", r.value.colorHex)
     }
+
+    @Test
+    fun `decimal budget is accepted`() {
+        val r = CategoryForm.validate("Food", "99.50", "", "#fff") as CategoryForm.Result.Ok
+        assertEquals(99.5, r.value.budget, 0.001)
+    }
+
+    @Test
+    fun `zero budget is valid`() {
+        val r = CategoryForm.validate("Food", "0", "", "#fff") as CategoryForm.Result.Ok
+        assertEquals(0.0, r.value.budget, 0.001)
+    }
+
+    @Test
+    fun `whitespace-only color falls back to default`() {
+        val r = CategoryForm.validate("Food", "100", "", "   ") as CategoryForm.Result.Ok
+        assertEquals(CategoryForm.DEFAULT_COLOR, r.value.colorHex)
+    }
+
+    @Test
+    fun `keyword de-duplication is case-insensitive`() {
+        assertEquals("food", CategoryForm.parseKeywords("Food, FOOD, food"))
+    }
+
+    @Test
+    fun `multi-word keywords keep internal spaces`() {
+        assertEquals("fast food,dining", CategoryForm.parseKeywords("Fast Food, Dining"))
+    }
 }
