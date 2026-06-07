@@ -1,9 +1,22 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
+
+// Load signing credentials from local.properties (gitignored) or environment variables
+val keystoreProperties = Properties().apply {
+    val localPropsFile = rootProject.file("local.properties")
+    if (localPropsFile.exists()) {
+        load(localPropsFile.inputStream())
+    }
+}
+
+fun signingProp(key: String, envKey: String): String =
+    keystoreProperties.getProperty(key) ?: System.getenv(envKey) ?: ""
 
 android {
     namespace = "com.starklabs.moneytracker"
@@ -21,10 +34,10 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file("release.keystore")
-            storePassword = "password123"
-            keyAlias = "release"
-            keyPassword = "password123"
+            storeFile = file(signingProp("RELEASE_STORE_FILE", "RELEASE_STORE_FILE").ifEmpty { "release.keystore" })
+            storePassword = signingProp("RELEASE_STORE_PASSWORD", "RELEASE_STORE_PASSWORD")
+            keyAlias = signingProp("RELEASE_KEY_ALIAS", "RELEASE_KEY_ALIAS").ifEmpty { "release" }
+            keyPassword = signingProp("RELEASE_KEY_PASSWORD", "RELEASE_KEY_PASSWORD")
             enableV1Signing = true
             enableV2Signing = true
         }
@@ -54,6 +67,9 @@ android {
     }
     buildFeatures {
         compose = true
+        // Required for BuildConfig.DEBUG / BuildConfig.VERSION_NAME references in code.
+        // AGP 8+ no longer generates BuildConfig unless this is explicitly enabled.
+        buildConfig = true
     }
 }
 

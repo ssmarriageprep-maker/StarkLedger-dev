@@ -4,30 +4,30 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CutCornerShape
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.sharp.Add
+import androidx.compose.material.icons.sharp.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.starklabs.moneytracker.ui.Screen
 import com.starklabs.moneytracker.ui.components.*
 import com.starklabs.moneytracker.ui.theme.*
-import java.text.SimpleDateFormat
-import java.util.*
 
 @Composable
 fun DashboardScreen(
@@ -35,184 +35,334 @@ fun DashboardScreen(
     viewModel: DashboardViewModel
 ) {
     val state by viewModel.uiState.collectAsState()
+    val categories by viewModel.categories.collectAsState()
+    var transactionToEdit by remember { mutableStateOf<com.starklabs.moneytracker.data.Transaction?>(null) }
+    
+    if (transactionToEdit != null) {
+        AlertDialog(
+            onDismissRequest = { transactionToEdit = null },
+            title = { Text("Edit Category") },
+            text = {
+                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
+                    items(categories) { cat ->
+                        Text(
+                            text = cat.name,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    transactionToEdit?.let {
+                                        viewModel.updateTransactionCategory(it.id, cat.id, it.merchant)
+                                    }
+                                    transactionToEdit = null
+                                }
+                                .padding(16.dp),
+                            color = OnSurface
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { transactionToEdit = null }) {
+                    Text("Cancel", color = Primary)
+                }
+            },
+            containerColor = SurfaceContainer
+        )
+    }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(StarkBackground)
-    ) {
-        // Decorative background scanning lines
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val gridStep = 50.dp.toPx()
-            val gridWidth = size.width
-            val gridHeight = size.height
+    val selectedAccountId by viewModel.selectedAccountId.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
 
-            var x = 0f
-            while (x < gridWidth) {
-                drawLine(
-                    color = InfoBlue.copy(alpha = 0.05f),
-                    start = Offset(x, 0f),
-                    end = Offset(x, gridHeight),
-                    strokeWidth = 1f
+    Scaffold(
+        containerColor = SurfaceContainerLowest,
+        topBar = {
+            Column(modifier = Modifier.background(SurfaceContainerLow)) {
+                StarkHeader(
+                    onSettingsClick = { navController.navigate(Screen.Settings.route) }
                 )
-                x += gridStep
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    GlobalAccountSelector(
+                        accounts = accounts,
+                        selectedAccountId = selectedAccountId,
+                        onAccountSelected = { viewModel.setSelectedAccount(it) }
+                    )
+                }
             }
-
-            var y = 0f
-            while (y < gridHeight) {
-                drawLine(
-                    color = InfoBlue.copy(alpha = 0.05f),
-                    start = Offset(0f, y),
-                    end = Offset(gridWidth, y),
-                    strokeWidth = 1f
-                )
-                y += gridStep
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { navController.navigate(Screen.AddTransaction.route) },
+                containerColor = PrimaryContainer,
+                contentColor = OnPrimary,
+                shape = CircleShape,
+                modifier = Modifier.offset(y = (-16).dp)
+            ) {
+                Icon(Icons.Sharp.Add, contentDescription = "Add Transaction", modifier = Modifier.size(32.dp))
             }
         }
-
-        androidx.compose.animation.AnimatedVisibility(
-            visible = true,
-            enter = androidx.compose.animation.fadeIn(tween(800)) + androidx.compose.animation.slideInVertically(tween(800)) { it / 2 }
+    ) { paddingValues ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 24.dp),
+            contentPadding = PaddingValues(top = 24.dp, bottom = 100.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-            // Header
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column {
-                    NeonText(text = "STARK INDUSTRIES", style = MaterialTheme.typography.labelSmall, color = TextWhite)
-                    NeonText(text = "LEDGER // PROTOCOL 1.2", color = NeonCyan, style = MaterialTheme.typography.titleMedium)
-                    NeonText(text = "SYSTEM STATUS: SECURE", color = IncomeGreen, style = MaterialTheme.typography.labelSmall)
-                }
-                Row {
-                    HudButton(text = "ACCOUNTS", onClick = { navController.navigate(Screen.Wallets.route) }, color = NeonCyan)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    HudButton(text = "CONFIG", onClick = { navController.navigate(Screen.Settings.route) }, color = TextGrey)
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Central Arc Reactor (Balance)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(280.dp)
-                    .clickable { navController.navigate(Screen.Analytics.route) },
-                contentAlignment = Alignment.Center
-            ) {
-                ArcReactor(
-                    percentage = state.budgetProgress,
-                    modifier = Modifier.size(240.dp),
-                    color = if (state.budgetProgress > 0.9f) ExpenseRed else NeonCyan
-                )
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    NeonText(text = "TOTAL LIQUIDITY", color = TextGrey, style = MaterialTheme.typography.labelSmall)
-                    NeonText(
-                        text = "₹${String.format("%,.0f", state.balance)}",
-                        style = MaterialTheme.typography.displayMedium,
-                        color = TextWhite
+            // 1. Total Balance Hero Section
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "CURRENT LIQUIDITY",
+                        style = StarkTypography.labelSmall,
+                        color = OnSurfaceVariant,
+                        letterSpacing = 2.sp
                     )
-                    NeonText(
-                        text = "BUDGET: ${(state.budgetProgress * 100).toInt()}%",
-                        color = if (state.budgetProgress > 0.9f) ExpenseRed else JarvisGold,
-                        style = MaterialTheme.typography.labelSmall
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = "₹",
+                            style = StarkTypography.headlineLarge,
+                            color = Primary,
+                            modifier = Modifier.padding(bottom = 8.dp, end = 4.dp),
+                            fontWeight = FontWeight.Light
+                        )
+                        Text(
+                            text = String.format("%,.2f", state.balance),
+                            style = StarkTypography.displayLarge.copy(fontSize = 56.sp),
+                            color = OnSurface,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Surface(
+                        color = TertiaryContainer.copy(alpha = 0.1f),
+                        shape = CircleShape,
+                        border = BorderStroke(1.dp, TertiaryContainer.copy(alpha = 0.2f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Sharp.TrendingUp, contentDescription = null, tint = TertiaryContainer, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "+12.4% this month",
+                                style = StarkTypography.labelSmall,
+                                color = TertiaryContainer,
+                                fontWeight = FontWeight.SemiBold
+                            )
+
+                            Text(
+                                text = String.format("%,.2f", state.balance),
+                                style = StarkTypography.displayLarge.copy(
+                                    fontSize = if (state.balance > 1000000) 40.sp else 56.sp
+                                ),
+                                color = OnSurface,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        val changePercent = state.monthlyChangePercent
+                        val isPositive = changePercent >= 0
+                        val changeColor = if (isPositive) TertiaryContainer else Error
+                        val changeIcon = if (isPositive) Icons.Sharp.TrendingUp else Icons.Sharp.TrendingDown
+                        val changeSign = if (isPositive) "+" else ""
+                        Surface(
+                            color = changeColor.copy(alpha = 0.1f),
+                            shape = CircleShape,
+                            border = BorderStroke(1.dp, changeColor.copy(alpha = 0.2f))
+                        ) {
+
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(changeIcon, contentDescription = null, tint = changeColor, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "${changeSign}${String.format("%.1f", changePercent)}% this month",
+                                    style = StarkTypography.labelSmall,
+                                    color = changeColor,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+
+                        }
+                    }
+                }
+            }
+
+            // 2. Bento Grid
+            item {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // Spending Trend Chart (New UI Component)
+                    StarkCard(
+                        modifier = Modifier.fillMaxWidth().height(120.dp),
+                        backgroundColor = SurfaceContainerLow,
+                        cornerRadius = 24.dp,
+                        contentPadding = PaddingValues(16.dp)
+                    ) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Column {
+                                Text("VELOCITY TREND", style = StarkTypography.labelSmall.copy(letterSpacing = 1.sp, color = PrimaryFixedDim))
+                                Text("7-Day Pulse", style = StarkTypography.bodySmall, color = OnSurfaceVariant)
+                            }
+                            Icon(Icons.Sharp.Timeline, contentDescription = null, tint = PrimaryFixedDim, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        GlowingLineChart(
+                            data = state.spendingTrend,
+                            modifier = Modifier.fillMaxWidth().height(40.dp),
+                            lineColor = PrimaryFixedDim,
+                            fillStartColor = PrimaryFixedDim.copy(alpha = 0.1f)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                    // Left Column: Income vs Expenses
+                    Column(modifier = Modifier.weight(2f)) {
+                        // Income Card
+                        StarkCard(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("MONTHLY INCOME", style = StarkTypography.labelSmall)
+                                Box(modifier = Modifier.size(32.dp).clip(RoundedCornerShape(12.dp)).background(TertiaryContainer.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Sharp.ArrowDownward, contentDescription = null, tint = TertiaryContainer, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                            Spacer(modifier = Modifier.weight(1f))
+                            Text("₹${String.format("%,.0f", state.totalIncome)}", style = StarkTypography.headlineMedium)
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(SurfaceContainerHigh)) {
+                                Box(modifier = Modifier.fillMaxWidth().fillMaxHeight().background(TertiaryContainer))
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Expense Card
+                        StarkCard(modifier = Modifier.fillMaxWidth().height(160.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("MONTHLY EXPENSES", style = StarkTypography.labelSmall)
+                                Box(modifier = Modifier.size(32.dp).clip(RoundedCornerShape(12.dp)).background(Error.copy(alpha = 0.1f)), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Sharp.ArrowUpward, contentDescription = null, tint = Error, modifier = Modifier.size(20.dp))
+                                }
+                            }
+                            Spacer(modifier = Modifier.weight(1f))
+                            Text("₹${String.format("%,.0f", state.totalSpent)}", style = StarkTypography.headlineMedium)
+                            Spacer(modifier = Modifier.height(24.dp))
+                            Box(modifier = Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(SurfaceContainerHigh)) {
+                                Box(modifier = Modifier.fillMaxWidth(state.budgetProgress.coerceIn(0f, 1f)).fillMaxHeight().background(Error))
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.width(24.dp))
+
+                    // Right Column: Budget Health
+                    StarkCard(modifier = Modifier.weight(1f).height(336.dp)) {
+                        Text("Budget Health", style = StarkTypography.titleMedium)
+                        Spacer(modifier = Modifier.weight(1f))
+                        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(128.dp).align(Alignment.CenterHorizontally)) {
+                            CircularProgressIndicator(
+                                progress = { 1f },
+                                modifier = Modifier.fillMaxSize(),
+                                color = SurfaceContainerHigh,
+                                strokeWidth = 12.dp,
+                                trackColor = Color.Transparent,
+                                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                            )
+                            CircularProgressIndicator(
+                                progress = { state.budgetProgress },
+                                modifier = Modifier.fillMaxSize(),
+                                color = PrimaryContainer,
+                                strokeWidth = 12.dp,
+                                trackColor = Color.Transparent,
+                                strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                            )
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "${((1 - state.budgetProgress) * 100).toInt()}%",
+                                    style = StarkTypography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                                    color = OnSurface
+                                )
+                                Text(
+                                    text = "SAFE",
+                                    style = StarkTypography.labelSmall.copy(fontSize = 10.sp),
+                                    color = OnSurfaceVariant
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        Surface(
+                            color = SurfaceContainerHigh,
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().border(BorderStroke(1.dp, SecondaryContainer.copy(alpha = 0.5f)), RoundedCornerShape(16.dp))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("AI INSIGHT", style = StarkTypography.labelSmall.copy(color = SecondaryContainer, fontSize = 10.sp))
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Safe to spend ₹${String.format("%.0f", (state.balance / 30))}/day",
+                                    style = StarkTypography.bodySmall,
+                                    color = OnSurface
+                                )
+                            }
+                        }
+                    }
+                    }
+                }
+            }
+
+            // 3. Transactions Section
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Transactions",
+                        style = StarkTypography.headlineSmall,
+                        color = OnSurface
+                    )
+                    Text(
+                        text = "VIEW ALL",
+                        style = StarkTypography.labelLarge.copy(color = PrimaryContainer, letterSpacing = 1.sp),
+                        modifier = Modifier.clickable { navController.navigate(Screen.History.route) }
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Quick Stats
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StatItemCard("MONTHLY IN", state.totalIncome, IncomeGreen, modifier = Modifier.weight(1f))
-                Spacer(modifier = Modifier.width(16.dp))
-                StatItemCard("MONTHLY OUT", state.totalSpent, JarvisOrange, modifier = Modifier.weight(1f))
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(2.dp, 16.dp).background(JarvisGold))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    NeonText(text = "TRANSACTION LOGS", color = JarvisGold, style = MaterialTheme.typography.titleSmall)
+            if (state.recentTransactions.isEmpty()) {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        Text("No recent activity", style = StarkTypography.bodyMedium, color = OnSurfaceVariant)
+                    }
                 }
-
-                TextButton(onClick = { navController.navigate(Screen.History.route) }) {
-                    NeonText(text = "VIEW ALL ARCHIVES //", color = NeonCyan, style = MaterialTheme.typography.labelSmall)
-                }
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Transaction List
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.weight(1f)
-            ) {
+            } else {
                 items(state.recentTransactions) { t ->
-                    TransactionItem(t)
+                    val accountName = accounts.find { it.id == t.accountId }?.name
+                    TransactionRow(
+                        transaction = t,
+                        accountName = accountName,
+                        onClick = { transactionToEdit = t }
+                    )
                 }
             }
         }
-        }
-        
-        // Floating Action Button Styled
-        Box(modifier = Modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.BottomEnd) {
-             FloatingActionButton(
-                 onClick = { navController.navigate(Screen.AddTransaction.route) },
-                 containerColor = NeonCyan,
-                 contentColor = StarkBlack,
-                 shape = CutCornerShape(topStart = 12.dp, bottomEnd = 12.dp)
-             ) {
-                 Icon(Icons.Sharp.Add, contentDescription = "Add")
-             }
-        }
     }
-}
-
-@Composable
-fun StatItemCard(label: String, amount: Double, color: Color, modifier: Modifier = Modifier) {
-    GlassCard(borderColor = color.copy(alpha = 0.4f), modifier = modifier) {
-        NeonText(text = label, color = color.copy(alpha = 0.7f), style = MaterialTheme.typography.labelSmall)
-        NeonText(text = "₹${String.format("%,.0f", amount)}", color = color, style = MaterialTheme.typography.titleLarge)
-    }
-}
-
-@Composable
-fun TransactionItem(t: com.starklabs.moneytracker.data.Transaction) {
-    GlassCard(borderColor = (if (t.type == "DEBIT") JarvisOrange else IncomeGreen).copy(alpha = 0.2f)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                NeonText(text = t.merchant.uppercase(), style = MaterialTheme.typography.titleSmall, color = TextWhite)
-                NeonText(text = formatDate(t.date), style = MaterialTheme.typography.bodySmall, color = TextGrey)
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                NeonText(
-                    text = (if (t.type == "DEBIT") "-" else "+") + "₹${String.format("%,.2f", t.amount)}",
-                    color = if (t.type == "DEBIT") JarvisOrange else IncomeGreen,
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-        }
-    }
-}
-
-private fun formatDate(timestamp: Long): String {
-    val sdf = SimpleDateFormat("dd MMM // HH:mm", Locale.getDefault())
-    return sdf.format(Date(timestamp))
 }

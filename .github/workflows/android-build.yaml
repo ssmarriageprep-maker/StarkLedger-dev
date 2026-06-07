@@ -1,14 +1,17 @@
 name: Android Build CI
 
-on:
-  push:
-    branches: [ main, master ]
-  pull_request:
+# Builds + publishes a GitHub Release only when changes land on main/master.
+# Pull-request verification is handled by ci-checks.yaml to avoid duplicate runs.
+# on:
+#   push:
+#     branches: [ main, master ]
 
 jobs:
   build:
     name: Build Android App
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
 
@@ -51,24 +54,34 @@ jobs:
             -keypass password123 \
             -dname "CN=StarkLedger, OU=StarkLabs, O=StarkLabs, L=Unknown, S=Unknown, C=US"
 
-      # 6) Build Debug APK
+      # 6) Run unit tests (gates the build)
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest
+
+      # 7) Build Debug APK
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      # 6) Build Release APK (Signed with Debug Key)
+      # 6) Build Release APK (Signed with the generated keystore above)
       - name: Build Release APK
         run: ./gradlew assembleRelease
+        env:
+          RELEASE_STORE_FILE: release.keystore
+          RELEASE_STORE_PASSWORD: password123
+          RELEASE_KEY_ALIAS: release
+          RELEASE_KEY_PASSWORD: password123
 
-      # 7) Upload Debug APK as Artifact
-      - name: Upload Debug APK
-        uses: actions/upload-artifact@v4
+      # 7) Create GitHub Release and Upload APKs
+      - name: Create Release
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        uses: softprops/action-gh-release@v1
         with:
-          name: debug-apk
-          path: app/build/outputs/apk/debug/*.apk
-
-      # 8) Upload Release APK
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-apk
-          path: app/build/outputs/apk/release/*.apk
+          tag_name: v${{ github.run_number }}
+          name: Release v${{ github.run_number }}
+          draft: false
+          prerelease: false
+          files: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

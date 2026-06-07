@@ -1,6 +1,7 @@
 package com.starklabs.moneytracker
 
 import com.starklabs.moneytracker.domain.SmsParser
+import com.starklabs.moneytracker.domain.SmsPattern
 import org.junit.Test
 import org.junit.Assert.*
 
@@ -27,6 +28,11 @@ class SmsParserTest {
         assertEquals("Dreamplug Service Private Limited", result.merchant)
         assertEquals("25-10-2025", result.date)
         assertEquals("566413406309", result.reference)
+        // Intelligence fields
+        assertEquals("transactional", result.category)
+        assertTrue(result.confidence >= 80)
+        assertTrue(result.patternDetected)
+        assertNotNull(result.messageHash)
     }
 
     @Test
@@ -123,6 +129,7 @@ class SmsParserTest {
         
         assertFalse("Should reject recharge offer", result.isTransaction)
         assertEquals("Promotional or non-bank message", result.reason)
+        assertEquals("non-transactional", result.category)
     }
 
     @Test

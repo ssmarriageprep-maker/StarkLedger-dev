@@ -1,24 +1,58 @@
 package com.starklabs.moneytracker.data
 
+import android.content.Context
 import com.starklabs.moneytracker.data.AccountDao
 import com.starklabs.moneytracker.data.CategoryDao
 import com.starklabs.moneytracker.data.TransactionDao
+import com.starklabs.moneytracker.data.MerchantCategoryMappingDao
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
+import java.util.concurrent.ConcurrentHashMap
+import java.util.regex.Pattern
 
 class MoneyRepository(
     private val transactionDao: TransactionDao,
     private val accountDao: AccountDao,
-    private val categoryDao: CategoryDao
+    private val categoryDao: CategoryDao,
+    private val merchantMappingDao: MerchantCategoryMappingDao
 ) {
+    // Cache compiled patterns for category/keyword matching to avoid thousands
+    // of redundant Regex compilations during bulk SMS scans.
+    private val patternCache = ConcurrentHashMap<String, Pattern>()
+
+    companion object {
+        @Volatile
+        private var INSTANCE: MoneyRepository? = null
+
+        fun getInstance(context: Context): MoneyRepository {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: run {
+                    val db = AppDatabase.getDatabase(context.applicationContext)
+                    MoneyRepository(
+                        db.transactionDao(),
+                        db.accountDao(),
+                        db.categoryDao(),
+                        db.merchantMappingDao()
+                    ).also { INSTANCE = it }
+                }
+            }
+        }
+    }
+
     // Transactions
     val allTransactions: Flow<List<Transaction>> = transactionDao.getAllTransactions()
     val totalSpent: Flow<Double?> = transactionDao.getTotalSpent()
     val totalIncome: Flow<Double?> = transactionDao.getTotalIncome()
 
-    suspend fun addTransaction(transaction: Transaction, smsBalance: Double? = null) {
-        transactionDao.insert(transaction)
-        // Update account balance
+    /**
+     * Inserts a transaction and updates the account balance.
+     * Returns the inserted row ID, or -1 if the row was ignored due to a conflict.
+     * Account balance is only adjusted when an insert actually happened.
+     */
+    suspend fun addTransaction(transaction: Transaction, smsBalance: Double? = null): Long {
+        val rowId = transactionDao.insert(transaction)
+        if (rowId == -1L) return rowId
+
         if (smsBalance != null) {
             val account = accountDao.getAccountById(transaction.accountId)
             if (account != null) {
@@ -32,17 +66,56 @@ class MoneyRepository(
                 accountDao.addBalance(transaction.accountId, transaction.amount)
             }
         }
+        return rowId
+    }
+
+    suspend fun deleteTransaction(transaction: Transaction) {
+        transactionDao.delete(transaction)
+        // Reverse account balance
+        if (transaction.type == "DEBIT") {
+            accountDao.addBalance(transaction.accountId, transaction.amount)
+        } else {
+            accountDao.deductBalance(transaction.accountId, transaction.amount)
+        }
+    }
+
+    suspend fun updateTransactionCategory(transactionId: Int, newCategoryId: Int, merchant: String? = null) {
+        val allTx = transactionDao.getAllTransactionsOneShot()
+        val tx = allTx.find { it.id == transactionId }
+        if (tx != null) {
+            transactionDao.update(tx.copy(categoryId = newCategoryId))
+            if (merchant != null) {
+                merchantMappingDao.insertOrUpdate(com.starklabs.moneytracker.data.MerchantCategoryMapping(merchant.trim(), newCategoryId))
+            }
+        }
     }
     
     // Accounts
     val allAccounts: Flow<List<Account>> = accountDao.getAllAccounts()
     suspend fun addAccount(account: Account) = accountDao.insert(account)
+    suspend fun updateAccount(account: Account) = accountDao.update(account)
     suspend fun getAccount(id: Int) = accountDao.getAccountById(id)
     
+    suspend fun mergeAccounts(sourceId: Int, targetId: Int) {
+        transactionDao.reassignTransactions(sourceId, targetId)
+        val sourceAccount = accountDao.getAccountById(sourceId)
+        if (sourceAccount != null) {
+            accountDao.addBalance(targetId, sourceAccount.balance)
+            accountDao.delete(sourceAccount)
+        }
+    }
+
+    suspend fun deleteAccount(account: Account) {
+        // First reassign transactions to default account
+        val defaultAccountId = getDefaultAccount()?.id ?: 1
+        transactionDao.reassignTransactions(account.id, defaultAccountId)
+        accountDao.delete(account)
+    }
+
     // Smart Account Finding for SMS
     suspend fun findAccountForSms(last4: String?): Account? {
         if (last4 == null) return null
-        return accountDao.getAccountByMaskedNumber(last4)
+        return accountDao.getAccountByLast4(last4)
     }
 
     // Default Account (Fallback)
@@ -55,20 +128,50 @@ class MoneyRepository(
     // Categories
     val allCategories: Flow<List<Category>> = categoryDao.getAllCategories()
     suspend fun addCategory(category: Category) = categoryDao.insert(category)
+    suspend fun updateCategory(category: Category) = categoryDao.insert(category) // insert with REPLACE acts as update
+    // Transactions referencing this category have categoryId set to NULL (FK onDelete = SET_NULL).
+    suspend fun deleteCategory(category: Category) = categoryDao.delete(category)
+    
     
     // Smart Category Matching
-    suspend fun identifyCategory(merchant: String, body: String): Int? {
-        val categories = categoryDao.getAllCategoriesOneShot()
+    suspend fun identifyCategory(
+        merchant: String,
+        body: String,
+        preFetchedCategories: List<Category>? = null
+    ): Int? {
+        // 1. Check user-defined merchant mapping override
+        val override = merchantMappingDao.getMapping(merchant.trim())
+        if (override != null) {
+            return override.categoryId
+        }
+
+        val categories = preFetchedCategories ?: categoryDao.getAllCategoriesOneShot()
+        if (categories.isEmpty()) return null
+
         val text = "$merchant $body".lowercase()
         
-        // 1. Check if merchant matches category name directly
-        categories.find { text.contains(it.name.lowercase()) }?.let { return it.id }
+        // 2. Check if merchant matches category name exactly
+        categories.find { category ->
+            val name = category.name.lowercase()
+            if (text.contains(name)) {
+                val pattern = patternCache.getOrPut("\\b$name\\b") {
+                    Pattern.compile("\\b$name\\b")
+                }
+                pattern.matcher(text).find()
+            } else false
+        }?.let { return it.id }
         
-        // 2. Check keywords
+        // 3. Check keywords with strict word boundaries
         categories.forEach { cat ->
             cat.keywords?.split(",")?.forEach { keyword ->
-                if (keyword.isNotBlank() && text.contains(keyword.trim().lowercase())) {
-                    return cat.id
+                val kw = keyword.trim().lowercase()
+                if (kw.isNotBlank() && text.contains(kw)) {
+                    val pattern = patternCache.getOrPut("\\b$kw\\b") {
+                        Pattern.compile("\\b$kw\\b")
+                    }
+                    if (pattern.matcher(text).find()) {
+                        return cat.id
+                    }
                 }
             }
         }
@@ -88,10 +191,9 @@ class MoneyRepository(
         }
         
         // Similarly for accounts, check if any exist
-        // Similarly for accounts, check if any exist
         if (accountDao.getAllAccounts().firstOrNull().isNullOrEmpty()) {
             val accounts = listOf(
-                 Account(name = "Cash", type = "CASH", balance = 0.0, colorHex = "#00B0FF", maskedNumber = null)
+                 Account(name = "Cash", type = "CASH", balance = 0.0, colorHex = "#00B0FF", last4Digits = null)
             )
             accounts.forEach { accountDao.insert(it) }
         }

@@ -1,233 +1,269 @@
 package com.starklabs.moneytracker.ui.analytics
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.sharp.*
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.asAndroidPath
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.compose.foundation.shape.CutCornerShape
 import com.starklabs.moneytracker.ui.components.*
 import com.starklabs.moneytracker.ui.theme.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AnalyticsScreen(
     navController: NavController,
     viewModel: AnalyticsViewModel
 ) {
     val state by viewModel.uiState.collectAsState()
+    val selectedAccountId by viewModel.selectedAccountId.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
     
-    Box(modifier = Modifier.fillMaxSize().background(StarkBackground)) {
-        Column(modifier = Modifier.padding(16.dp).verticalScroll(rememberScrollState())) {
-             HudHeader(title = "FINANCIAL INTELLIGENCE", subtitle = "ANALYZING EXPENDITURE PROTOCOLS")
-             
-             Spacer(modifier = Modifier.height(24.dp))
-             
-             // Intelligence Summary
-             Row(modifier = Modifier.fillMaxWidth()) {
-                 GlassCard(modifier = Modifier.weight(1f)) {
-                     NeonText(text = "CRITICAL LEAK", color = JarvisGold, style = MaterialTheme.typography.labelSmall)
-                     NeonText(text = state.topCategory.uppercase(), style = MaterialTheme.typography.headlineSmall, color = TextWhite)
-                 }
-                 Spacer(modifier = Modifier.width(16.dp))
-                 GlassCard(modifier = Modifier.weight(0.8f)) {
-                     NeonText(text = "HEALTH INDEX", color = NeonCyan, style = MaterialTheme.typography.labelSmall)
-                     NeonText(text = "92%", style = MaterialTheme.typography.headlineSmall, color = IncomeGreen)
-                 }
-             }
-             
-             Spacer(modifier = Modifier.height(24.dp))
-             
-             // Donut Chart Section
-             NeonText(text = "SECTOR DISTRIBUTION", color = NeonCyan, style = MaterialTheme.typography.titleSmall)
-             Spacer(modifier = Modifier.height(12.dp))
-             Box(modifier = Modifier.fillMaxWidth().height(250.dp), contentAlignment = Alignment.Center) {
-                 AnimatedDonutChart(slices = state.pieSlices, modifier = Modifier.size(220.dp))
-                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                     NeonText(text = "TOTAL LOSS", color = TextGrey, style = MaterialTheme.typography.labelSmall)
-                     NeonText(text = "₹${String.format("%,.0f", state.totalExpense)}", color = TextWhite, style = MaterialTheme.typography.titleLarge)
-                 }
-             }
-             
-             Spacer(modifier = Modifier.height(24.dp))
-             
-             // Trend Line
-             NeonText(text = "EXPENDITURE VELOCITY", color = NeonCyan, style = MaterialTheme.typography.titleSmall)
-             Spacer(modifier = Modifier.height(12.dp))
-             GlassCard(modifier = Modifier.fillMaxWidth().height(180.dp)) {
-                 GlowingLineChart(data = state.weeklySpending, modifier = Modifier.fillMaxSize())
-             }
-             
-             Spacer(modifier = Modifier.height(24.dp))
-
-             // Income vs Expense
-             NeonText(text = "LIQUIDITY FLOW", color = NeonCyan, style = MaterialTheme.typography.titleSmall)
-             Spacer(modifier = Modifier.height(12.dp))
-             GlassCard(modifier = Modifier.fillMaxWidth().height(120.dp)) {
-                 IncomeExpenseChart(income = state.totalIncome, expense = state.totalExpense)
-             }
-             
-             Spacer(modifier = Modifier.height(24.dp))
-             
-             // Category Breakdown
-             if (state.categoryPerformance.isNotEmpty()) {
-                 NeonText(text = "SYSTEM AUDIT BY CATEGORY", color = JarvisGold, style = MaterialTheme.typography.titleSmall)
-                 state.categoryPerformance.forEach { perf ->
-                     Spacer(modifier = Modifier.height(10.dp))
-                     CategoryAuditItem(perf)
-                 }
-             }
-             
-             Spacer(modifier = Modifier.height(32.dp))
-        }
-    }
-}
-
-@Composable
-fun CategoryAuditItem(perf: CategoryPerformance) {
-    val isNearLimit = perf.percentage > 0.85f
-    val glowColor = if (perf.percentage > 0.95f) ExpenseRed else if (isNearLimit) JarvisOrange else NeonCyan
-
-    GlassCard(
-        borderColor = glowColor.copy(alpha = 0.4f),
-        modifier = Modifier.fillMaxWidth(),
-        shape = CutCornerShape(8.dp)
-    ) {
-        Column {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(8.dp).background(perf.color))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    NeonText(text = perf.name.uppercase(), color = TextWhite, style = MaterialTheme.typography.bodyMedium)
-                }
-                NeonText(
-                    text = "${(perf.percentage * 100).toInt()}%",
-                    color = if (perf.percentage > 0.9f) ExpenseRed else NeonCyan
+    Scaffold(
+        containerColor = SurfaceContainerLowest,
+        topBar = {
+            Column(modifier = Modifier.background(SurfaceContainerLow)) {
+                StarkHeader(
+                    title = "StarkLedger",
+                    onSettingsClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Settings.route) }
                 )
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Technical Progress Bar Enhanced
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .background(StarkSurface, shape = CutCornerShape(2.dp))
-            ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(perf.percentage.coerceIn(0f, 1f))
-                        .fillMaxHeight()
-                        .background(
-                            Brush.horizontalGradient(
-                                listOf(glowColor.copy(alpha = 0.3f), glowColor)
-                            ),
-                            shape = CutCornerShape(2.dp)
-                        )
-                )
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    GlobalAccountSelector(
+                        accounts = accounts,
+                        selectedAccountId = selectedAccountId,
+                        onAccountSelected = { viewModel.setSelectedAccount(it) }
+                    )
+                }
+            }
+        }
+    ) { paddingValues ->
+        var visible by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { visible = true }
 
-                // Technical Grid markers on progress bar
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val steps = 10
-                    val stepWidth = size.width / steps
-                    for (i in 1 until steps) {
-                        drawLine(
-                            color = StarkBackground.copy(alpha = 0.5f),
-                            start = Offset(i * stepWidth, 0f),
-                            end = Offset(i * stepWidth, size.height),
-                            strokeWidth = 1.dp.toPx()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Insight Banner
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(800)) + slideInVertically(tween(800), initialOffsetY = { it / 2 })
+            ) {
+            Surface(
+                color = SurfaceContainerLow,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(width = 1.dp, color = OutlineVariant.copy(alpha = 0.2f), shape = RoundedCornerShape(12.dp))
+                    .border(width = 2.dp, color = state.pulseColor, shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 0.dp, bottomEnd = 0.dp))
+            ) {
+                Row(
+                    modifier = Modifier.padding(24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("WEEKLY PULSE", style = StarkTypography.labelSmall.copy(color = state.pulseColor, fontWeight = FontWeight.SemiBold))
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = state.pulseTitle,
+                            style = StarkTypography.headlineMedium.copy(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+                            color = OnSurface,
+                            lineHeight = 30.sp
                         )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = state.pulseDescription,
+                            style = StarkTypography.bodyMedium,
+                            color = OnSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Surface(
+                        color = SurfaceContainerHigh,
+                        shape = CircleShape,
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(Icons.Sharp.Lightbulb, contentDescription = null, tint = state.pulseColor, modifier = Modifier.size(24.dp))
+                        }
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                NeonText(
-                    text = "USED: ₹${String.format("%,.0f", perf.spent)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextGrey
-                )
-                NeonText(
-                    text = "LIMIT: ₹${String.format("%,.0f", perf.budget)}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextGrey.copy(alpha = 0.6f)
-                )
             }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Main Grid
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(1000)) + slideInVertically(tween(1000), initialOffsetY = { it / 2 })
+            ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                // Spending Velocity (Line Chart)
+                StarkCard(modifier = Modifier.weight(2f).height(400.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                        Column {
+                            Text("Spending Velocity", style = StarkTypography.titleLarge)
+                            Text("JAN 01 — JUN 30", style = StarkTypography.labelSmall)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
+                            Text("₹${String.format("%,.0f", state.totalExpense)}", style = StarkTypography.headlineSmall.copy(color = PrimaryContainer))
+                            Text("+4.2% GROWTH", style = StarkTypography.labelSmall.copy(color = Tertiary, fontSize = 10.sp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                        // Mock data for line chart
+                        GlowingLineChart(
+                            data = listOf(0.2f, 0.4f, 0.3f, 0.6f, 0.8f, 1.0f),
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        Surface(
+                            color = SurfaceContainerHighest,
+                            shape = RoundedCornerShape(4.dp),
+                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).border(width = 1.dp, color = PrimaryContainer.copy(alpha = 0.2f), shape = RoundedCornerShape(4.dp))
+                        ) {
+                            Text("PEAK JUNE: ₹3.2K", style = StarkTypography.labelSmall.copy(color = PrimaryContainer, fontSize = 8.sp), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        listOf("JAN", "FEB", "MAR", "APR", "MAY", "JUN").forEach { month ->
+                            Text(month, style = StarkTypography.labelSmall.copy(fontSize = 10.sp))
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(24.dp))
+
+                // Composition (Pie Chart)
+                StarkCard(modifier = Modifier.weight(1f).height(400.dp)) {
+                    Text("Composition", style = StarkTypography.titleLarge)
+                    Text("BY PERCENTAGE", style = StarkTypography.labelSmall)
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Box(modifier = Modifier.size(160.dp).align(Alignment.CenterHorizontally), contentAlignment = Alignment.Center) {
+                        AnimatedDonutChart(slices = state.pieSlices, modifier = Modifier.fillMaxSize())
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("78%", style = StarkTypography.headlineMedium, color = OnSurface)
+                            Text("TRACKED", style = StarkTypography.labelSmall.copy(fontSize = 10.sp))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Column {
+                        state.categoryPerformance.take(3).forEach { perf ->
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(perf.color))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(perf.name, style = StarkTypography.bodySmall, color = OnSurface)
+                                }
+                                Text("${(perf.percentage * 100).toInt()}%", style = StarkTypography.labelSmall)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                        }
+                    }
+                }
+            }
+            }
+            
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Category Comparison
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(1200)) + slideInVertically(tween(1200), initialOffsetY = { it / 2 })
+            ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                StarkCard(modifier = Modifier.weight(1f)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Benchmarking", style = StarkTypography.titleLarge)
+                        Icon(Icons.Sharp.FilterList, contentDescription = null, tint = OnSurfaceVariant, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Column {
+                        state.categoryPerformance.take(3).forEach { perf ->
+                            Column {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.Bottom) {
+                                    Text(perf.name, style = StarkTypography.bodyMedium.copy(fontWeight = FontWeight.SemiBold))
+                                    Text("₹${String.format("%.0f", perf.spent)} / ₹${String.format("%.0f", perf.budget)} Budget", style = StarkTypography.labelSmall)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Box(modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape).background(SurfaceContainerHighest)) {
+                                    Box(modifier = Modifier.fillMaxWidth(perf.percentage.coerceIn(0f, 1f)).fillMaxHeight().clip(CircleShape).background(if (perf.percentage >= 1f) Error else PrimaryContainer))
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(24.dp))
+
+                // Timeline
+                StarkCard(modifier = Modifier.weight(1f)) {
+                    Text("Active Timeline", style = StarkTypography.titleLarge)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // Using a simple vertical line and items
+                        state.categoryPerformance.take(3).forEachIndexed { index, perf ->
+                            Row(modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(if(index==0) PrimaryContainer else SurfaceContainerHighest).border(width = 1.dp, color = PrimaryContainer.copy(alpha = 0.2f), shape = CircleShape), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Sharp.ShoppingBag, contentDescription = null, tint = if(index==0) OnPrimary else PrimaryContainer, modifier = Modifier.size(20.dp))
+                                }
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Merchant ${index + 1}", style = StarkTypography.bodyLarge.copy(fontWeight = FontWeight.Bold))
+                                    Text("TODAY, 14:22", style = StarkTypography.labelSmall)
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text("-₹1,299.00", style = StarkTypography.headlineSmall.copy(fontSize = 18.sp))
+                                    Text("HARDWARE", style = StarkTypography.labelSmall)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            }
+
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }
-
-@Composable
-fun IncomeExpenseChart(income: Double, expense: Double) {
-    val max = maxOf(income, expense, 1.0)
-    
-    Column(
-        modifier = Modifier.fillMaxSize().padding(8.dp),
-        verticalArrangement = Arrangement.SpaceEvenly
-    ) {
-        // Income Bar
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            NeonText(text = "IN", color = IncomeGreen, style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(35.dp))
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(10.dp)
-                    .background(StarkSurface)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth((income / max).toFloat())
-                        .fillMaxHeight()
-                        .background(
-                            Brush.horizontalGradient(listOf(IncomeGreen.copy(alpha = 0.3f), IncomeGreen))
-                        )
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            NeonText(text = "₹${String.format("%,.0f", income)}", color = TextWhite, style = MaterialTheme.typography.labelSmall)
-        }
-        
-        // Expense Bar
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            NeonText(text = "OUT", color = ExpenseRed, style = MaterialTheme.typography.labelSmall, modifier = Modifier.width(35.dp))
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(10.dp)
-                    .background(StarkSurface)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth((expense / max).toFloat())
-                        .fillMaxHeight()
-                        .background(
-                            Brush.horizontalGradient(listOf(ExpenseRed.copy(alpha = 0.3f), ExpenseRed))
-                        )
-                )
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            NeonText(text = "₹${String.format("%,.0f", expense)}", color = TextWhite, style = MaterialTheme.typography.labelSmall)
-        }
-    }
-}
-
-

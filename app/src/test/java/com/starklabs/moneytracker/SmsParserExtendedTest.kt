@@ -1,6 +1,7 @@
 package com.starklabs.moneytracker
 
 import com.starklabs.moneytracker.domain.SmsParser
+import com.starklabs.moneytracker.domain.SmsPattern
 import org.junit.Test
 import org.junit.Assert.*
 
@@ -20,6 +21,10 @@ class SmsParserExtendedTest {
         assertEquals("6791", result.accountLast4)
         // Merchant should be BillPay/Credit Card payment
         assertEquals("BillPay/Credit Card payment", result.merchant)
+        // Intelligence fields
+        assertEquals("transactional", result.category)
+        assertTrue(result.confidence >= 80)
+        assertNotNull(result.messageHash)
     }
 
     @Test
