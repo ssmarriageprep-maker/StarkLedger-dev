@@ -3,16 +3,25 @@ package com.starklabs.moneytracker.ui.analytics
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.starklabs.moneytracker.data.Category
 import com.starklabs.moneytracker.data.MoneyRepository
 import com.starklabs.moneytracker.data.Transaction
+import com.starklabs.moneytracker.domain.FilterDimension
+import com.starklabs.moneytracker.domain.TransactionFilter
+import com.starklabs.moneytracker.domain.TransactionFilterEngine
+import com.starklabs.moneytracker.domain.TransactionFilterStore
+import com.starklabs.moneytracker.domain.YearlyAnalyticsEngine
 import com.starklabs.moneytracker.ui.theme.NeonCyan
 import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import java.util.Calendar
 
 data class Slice(
     val value: Float,
@@ -40,12 +49,39 @@ data class AnalyticsState(
     val pulseColor: Color = Color(0xFFFEB300) // SecondaryContainer
 )
 
+/** Month vs Year toggle for the Analytics screen — drives which aggregation is displayed. */
+enum class AnalyticsViewMode { MONTHLY, YEARLY }
+
+/**
+ * Yearly aggregation surfaced to the screen. Built on top of [YearlyAnalyticsEngine]
+ * so chart inputs ([Slice] for the donut, normalized 0..1 series for [com.starklabs.moneytracker.ui.components.GlowingLineChart])
+ * are derived here rather than duplicated in Compose — "no duplicated chart logic".
+ */
+data class YearlyAnalyticsState(
+    val year: Int = Calendar.getInstance().get(Calendar.YEAR),
+    val availableYears: List<Int> = emptyList(),
+    val totalIncome: Double = 0.0,
+    val totalExpense: Double = 0.0,
+    val savings: Double = 0.0,
+    val topCategorySlices: List<Slice> = emptyList(),
+    val monthlyIncomeTrend: List<Float> = emptyList(),
+    val monthlyExpenseTrend: List<Float> = emptyList(),
+    val monthLabels: List<String> = emptyList()
+)
+
+private data class AnalyticsScope(
+    val transactions: List<Transaction>,
+    val categories: List<Category>
+)
+
 class AnalyticsViewModel(
     private val repository: MoneyRepository,
-    private val appSettingsRepository: com.starklabs.moneytracker.data.AppSettingsRepository
+    private val appSettingsRepository: com.starklabs.moneytracker.data.AppSettingsRepository,
+    private val filterStore: TransactionFilterStore
 ) : ViewModel() {
 
     val accounts: StateFlow<List<com.starklabs.moneytracker.data.Account>> = repository.allAccounts.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val categories: StateFlow<List<Category>> = repository.allCategories.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val selectedAccountId: StateFlow<Int> = appSettingsRepository.selectedAccountId.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), -1)
 
     fun setSelectedAccount(id: Int) {
@@ -54,14 +90,44 @@ class AnalyticsViewModel(
         }
     }
 
-    val uiState = combine(
+    /** Shared advanced-filter state — same instance History reads, so filters persist across screens. */
+    val filter: StateFlow<TransactionFilter> = filterStore.filter
+
+    fun applyFilter(newFilter: TransactionFilter) = filterStore.update(newFilter)
+
+    fun clearFilterDimension(dimension: FilterDimension) = filterStore.clearDimension(dimension)
+
+    fun clearAllFilters() = filterStore.clear()
+
+    private val _viewMode = MutableStateFlow(AnalyticsViewMode.MONTHLY)
+    val viewMode: StateFlow<AnalyticsViewMode> = _viewMode.asStateFlow()
+
+    fun setViewMode(mode: AnalyticsViewMode) {
+        _viewMode.value = mode
+    }
+
+    private val _selectedYear = MutableStateFlow(Calendar.getInstance().get(Calendar.YEAR))
+    val selectedYear: StateFlow<Int> = _selectedYear.asStateFlow()
+
+    fun setSelectedYear(year: Int) {
+        _selectedYear.value = year
+    }
+
+    /** Account + advanced-filter scoped transactions, shared by both the monthly and yearly aggregations below. */
+    private val scopedData: StateFlow<AnalyticsScope> = combine(
         repository.allTransactions,
         repository.allCategories,
-        appSettingsRepository.selectedAccountId
-    ) { allTransactions, categories, selectedId ->
+        appSettingsRepository.selectedAccountId,
+        filterStore.filter
+    ) { allTransactions, allCategories, selectedId, activeFilter ->
+        val byAccount = if (selectedId == -1) allTransactions else allTransactions.filter { it.accountId == selectedId }
+        AnalyticsScope(TransactionFilterEngine.apply(byAccount, activeFilter), allCategories)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AnalyticsScope(emptyList(), emptyList()))
 
-        val transactions = if (selectedId == -1) allTransactions else allTransactions.filter { it.accountId == selectedId }
-        
+    val uiState: StateFlow<AnalyticsState> = scopedData.map { scope ->
+        val transactions = scope.transactions
+        val categories = scope.categories
+
         val calendar = java.util.Calendar.getInstance()
         calendar.set(java.util.Calendar.DAY_OF_MONTH, 1)
         calendar.set(java.util.Calendar.HOUR_OF_DAY, 0)
@@ -69,33 +135,33 @@ class AnalyticsViewModel(
         calendar.set(java.util.Calendar.SECOND, 0)
         calendar.set(java.util.Calendar.MILLISECOND, 0)
         val startOfMonth = calendar.timeInMillis
-        
+
         val currentMonthTransactions = transactions.filter { it.date >= startOfMonth }
 
         // 1. Process Pie Chart (By Category)
         val categoryMap = currentMonthTransactions.filter { it.type == "DEBIT" }.groupBy { it.categoryId }
         val totalDebit = currentMonthTransactions.filter { it.type == "DEBIT" }.sumOf { it.amount }
         val totalCredit = currentMonthTransactions.filter { it.type == "CREDIT" }.sumOf { it.amount }
-        
+
         val slices = categoryMap.mapNotNull { (catId, list) ->
             val category = categories.find { it.id == catId }
             val name = category?.name ?: "Uncategorized"
             val colorHex = category?.colorHex ?: "#808080"
-            
+
             val sum = list.sumOf { it.amount }
             if (sum == 0.0) return@mapNotNull null
-            
+
             val portion = if (totalDebit > 0.0) (sum / totalDebit).toFloat() else 0f
-            
+
             Slice(
                 value = portion,
                 color = try { Color(android.graphics.Color.parseColor(colorHex)) } catch (e: Exception) { NeonCyan },
                 label = name
             )
         }.sortedByDescending { it.value }.take(5) // Top 5
-        
+
         // 2. Process Weekly Spending (Last 7 days approx)
-        val trend = if (transactions.isEmpty()) emptyList() 
+        val trend = if (transactions.isEmpty()) emptyList()
                    else transactions.take(7).map { (it.amount / 5000.0).toFloat().coerceIn(0f, 1f) }
 
         // 3. Process Category Performance
@@ -103,7 +169,7 @@ class AnalyticsViewModel(
             val category = categories.find { it.id == catId } ?: return@mapNotNull null
             val sum = list.sumOf { it.amount }
             if (sum == 0.0) return@mapNotNull null
-            
+
             CategoryPerformance(
                 name = category.name,
                 spent = sum,
@@ -174,13 +240,50 @@ class AnalyticsViewModel(
             pulseColor = pulseColor
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AnalyticsState())
+
+    /**
+     * Yearly aggregation for the Year toggle. Delegates all math to [YearlyAnalyticsEngine]
+     * (account + filter scoped via [scopedData]) and only shapes the result into chart-ready
+     * [Slice]/normalized-series form here, reusing [com.starklabs.moneytracker.ui.components.AnimatedDonutChart]
+     * and [com.starklabs.moneytracker.ui.components.GlowingLineChart] in the screen.
+     */
+    val yearlyState: StateFlow<YearlyAnalyticsState> = combine(scopedData, _selectedYear) { scope, year ->
+        val summary = YearlyAnalyticsEngine.compute(scope.transactions, scope.categories, year)
+        val availableYears = YearlyAnalyticsEngine.availableYears(scope.transactions).ifEmpty { listOf(year) }
+
+        val topCategoryTotal = summary.topCategories.sumOf { it.amount }
+        val slices = summary.topCategories.take(5).map { categoryAmount ->
+            Slice(
+                value = if (topCategoryTotal > 0.0) (categoryAmount.amount / topCategoryTotal).toFloat() else 0f,
+                color = try { Color(android.graphics.Color.parseColor(categoryAmount.colorHex)) } catch (e: Exception) { NeonCyan },
+                label = categoryAmount.name
+            )
+        }
+
+        val maxMonthly = summary.monthlyTrend.maxOfOrNull { maxOf(it.income, it.expense) } ?: 0.0
+        fun normalize(value: Double): Float = if (maxMonthly > 0.0) (value / maxMonthly).toFloat().coerceIn(0f, 1f) else 0f
+
+        YearlyAnalyticsState(
+            year = summary.year,
+            availableYears = availableYears,
+            totalIncome = summary.totalIncome,
+            totalExpense = summary.totalExpense,
+            savings = summary.savings,
+            topCategorySlices = slices,
+            monthlyIncomeTrend = summary.monthlyTrend.map { normalize(it.income) },
+            monthlyExpenseTrend = summary.monthlyTrend.map { normalize(it.expense) },
+            monthLabels = summary.monthlyTrend.map { it.label }
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), YearlyAnalyticsState())
 }
 
 class AnalyticsViewModelFactory(
     private val repository: MoneyRepository,
-    private val appSettingsRepository: com.starklabs.moneytracker.data.AppSettingsRepository
+    private val appSettingsRepository: com.starklabs.moneytracker.data.AppSettingsRepository,
+    private val filterStore: TransactionFilterStore
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return AnalyticsViewModel(repository, appSettingsRepository) as T
+        @Suppress("UNCHECKED_CAST")
+        return AnalyticsViewModel(repository, appSettingsRepository, filterStore) as T
     }
 }

@@ -37,8 +37,23 @@ fun HistoryScreen(
     val categories by viewModel.categories.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
     val selectedAccountId by viewModel.selectedAccountId.collectAsState()
+    val activeFilter by viewModel.filter.collectAsState()
     var selectedTransaction by remember { mutableStateOf<com.starklabs.moneytracker.data.Transaction?>(null) }
     var showDetailSheet by remember { mutableStateOf(false) }
+    var showFilterSheet by remember { mutableStateOf(false) }
+
+    if (showFilterSheet) {
+        TransactionFilterSheet(
+            filter = activeFilter,
+            categories = categories,
+            accounts = accounts,
+            onApply = {
+                viewModel.applyFilter(it)
+                showFilterSheet = false
+            },
+            onDismiss = { showFilterSheet = false }
+        )
+    }
 
     if (showDetailSheet && selectedTransaction != null) {
         val t = selectedTransaction!!
@@ -164,63 +179,71 @@ fun HistoryScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Search and Filter Bar
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(SurfaceContainerLow)
-                    .border(1.dp, OutlineVariant.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Sharp.Search, contentDescription = null, tint = OnSurfaceVariant, modifier = Modifier.size(24.dp))
-                    Spacer(modifier = Modifier.width(12.dp))
-                    BasicTextField(
-                        value = state.searchQuery,
-                        onValueChange = { viewModel.onSearchQueryChange(it) },
-                        modifier = Modifier.weight(1f),
-                        textStyle = StarkTypography.bodyLarge.copy(color = Primary),
-                        decorationBox = { innerTextField ->
-                            if (state.searchQuery.isEmpty()) {
-                                Text("Search transactions...", color = OnSurfaceVariant, style = StarkTypography.bodyLarge)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(SurfaceContainerLow)
+                        .border(1.dp, OutlineVariant.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Sharp.Search, contentDescription = null, tint = OnSurfaceVariant, modifier = Modifier.size(24.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        BasicTextField(
+                            value = state.searchQuery,
+                            onValueChange = { viewModel.onSearchQueryChange(it) },
+                            modifier = Modifier.weight(1f),
+                            textStyle = StarkTypography.bodyLarge.copy(color = Primary),
+                            decorationBox = { innerTextField ->
+                                if (state.searchQuery.isEmpty()) {
+                                    Text("Search transactions...", color = OnSurfaceVariant, style = StarkTypography.bodyLarge)
+                                }
+                                innerTextField()
                             }
-                            innerTextField()
-                        }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Filter Chips
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                val filters = listOf("All", "Debit", "Credit", "Food", "Travel", "Bills")
-                filters.forEach { filter ->
-                    val isSelected = (filter == "All" && state.searchQuery.isEmpty()) || state.searchQuery.equals(filter, ignoreCase = true)
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { viewModel.onSearchQueryChange(if (filter == "All") "" else filter) },
-                        label = { Text(filter) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = PrimaryContainer.copy(alpha = 0.2f),
-                            selectedLabelColor = Primary,
-                            containerColor = SurfaceContainerLow,
-                            labelColor = OnSurfaceVariant
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
-                            selected = isSelected,
-                            borderColor = OutlineVariant.copy(alpha = 0.3f),
-                            selectedBorderColor = Primary
                         )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (activeFilter.isActive) PrimaryContainer.copy(alpha = 0.2f) else SurfaceContainerLow)
+                        .border(
+                            1.dp,
+                            if (activeFilter.isActive) Primary else OutlineVariant.copy(alpha = 0.15f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .clickable { showFilterSheet = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Sharp.Tune,
+                        contentDescription = "Filter transactions",
+                        tint = if (activeFilter.isActive) Primary else OnSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            ActiveFilterChipsRow(
+                filter = activeFilter,
+                categories = categories,
+                accounts = accounts,
+                onClearDimension = { viewModel.clearFilterDimension(it) },
+                onClearAll = { viewModel.clearAllFilters() },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (activeFilter.isActive) {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             if (state.groupedTransactions.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
