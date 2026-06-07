@@ -69,7 +69,8 @@ object TransactionProcessor {
             type = transactionType,
             smsBody = body,
             accountId = accountId,
-            categoryId = categoryId
+            categoryId = categoryId,
+            smsHash = parsed.messageHash
         )
 
         val rowId = repository.addTransaction(transaction, parsed.balance)
@@ -100,7 +101,7 @@ object TransactionProcessor {
                     name = "$bankName - $last4",
                     type = "BANK",
                     balance = 0.0,
-                    maskedNumber = last4,
+                    last4Digits = last4,
                     colorHex = "#FFD700"
                 )
             ).toInt()

@@ -1,7 +1,8 @@
 name: Android CI Checks
+# Runs only on pull requests so feature-branch pushes don't burn CI minutes.
+# The build/release on main is handled by android-build.yaml.
 on:
   pull_request:
-  push:
 jobs:
   checks:
     name: Run CI Checks

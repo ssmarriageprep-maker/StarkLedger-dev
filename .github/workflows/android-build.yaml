@@ -1,9 +1,10 @@
 name: Android Build CI
 
+# Builds + publishes a GitHub Release only when changes land on main/master.
+# Pull-request verification is handled by ci-checks.yaml to avoid duplicate runs.
 on:
   push:
     branches: [ main, master ]
-  pull_request:
 
 jobs:
   build:

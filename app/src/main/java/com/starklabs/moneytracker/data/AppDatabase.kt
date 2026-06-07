@@ -2,6 +2,7 @@ package com.starklabs.moneytracker.data
 
 import android.content.Context
 import androidx.room.*
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
@@ -34,7 +35,14 @@ data class Category(
         ForeignKey(entity = Account::class, parentColumns = ["id"], childColumns = ["accountId"], onDelete = ForeignKey.CASCADE),
         ForeignKey(entity = Category::class, parentColumns = ["id"], childColumns = ["categoryId"], onDelete = ForeignKey.SET_NULL)
     ],
-    indices = [Index(value = ["accountId"]), Index(value = ["categoryId"])]
+    indices = [
+        Index(value = ["accountId"]),
+        Index(value = ["categoryId"]),
+        // Unique hash of the source SMS so re-scanning the inbox never creates
+        // duplicates. NULL for manually-entered transactions (SQLite treats
+        // multiple NULLs as distinct, so manual entries never collide).
+        Index(value = ["smsHash"], unique = true)
+    ]
 )
 data class Transaction(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
@@ -45,7 +53,8 @@ data class Transaction(
     val smsBody: String? = null,
     val accountId: Int, // Now strictly required
     val categoryId: Int? = null, // Can be null if uncategorized
-    val notes: String? = null
+    val notes: String? = null,
+    val smsHash: String? = null // SHA-256 of the parsed SMS, used for dedup
 )
 
 // ------------------- DAOS -------------------
@@ -153,8 +162,8 @@ interface MerchantCategoryMappingDao {
 // ------------------- DATABASE -------------------
 
 @Database(
-    entities = [Transaction::class, Account::class, Category::class, MerchantCategoryMapping::class], 
-    version = 5,
+    entities = [Transaction::class, Account::class, Category::class, MerchantCategoryMapping::class],
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -167,13 +176,21 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        // v5 -> v6: add smsHash column + unique index for cross-scan deduplication.
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE transactions ADD COLUMN smsHash TEXT")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_transactions_smsHash ON transactions(smsHash)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val builder = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "moneytracker_db"
-                )
+                ).addMigrations(MIGRATION_5_6)
                 // Only allow destructive migration in debug builds.
                 // In release, a missing migration will throw IllegalStateException
                 // (fail-loud) instead of silently wiping all user data.
