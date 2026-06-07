@@ -54,7 +54,11 @@ jobs:
             -keypass password123 \
             -dname "CN=StarkLedger, OU=StarkLabs, O=StarkLabs, L=Unknown, S=Unknown, C=US"
 
-      # 6) Build Debug APK
+      # 6) Run unit tests (gates the build)
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest
+
+      # 7) Build Debug APK
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
