@@ -632,15 +632,18 @@ object SmsParser {
     //  UTILITIES
     // ════════════════════════════════════════════════════════════════════════
 
+    // Matches any run of whitespace (spaces, tabs, CR, LF, etc.).
+    private val ANY_WHITESPACE = Pattern.compile("\\s+")
+
     /**
-     * Normalize: merge multi-line fragments, collapse runs of whitespace to single space.
+     * Normalize before hashing/parsing: collapse EVERY run of whitespace — single
+     * or multiple, including tabs, CR and LF — to one space, then trim.
+     *
+     * This is foundational to deduplication: "Sent Rs.100", "Sent  Rs.100 ",
+     * "Sent\tRs.100" and "Sent\r\nRs.100" must all hash identically.
      */
     private fun normalizeMessage(body: String): String {
-        return body
-            .replace("\r\n", " ")
-            .replace("\n", " ")
-            .replace(Regex("\\s{2,}"), " ")
-            .trim()
+        return ANY_WHITESPACE.matcher(body).replaceAll(" ").trim()
     }
 
     /**
