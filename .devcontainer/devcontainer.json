@@ -1,11 +1,20 @@
 {
-  "name": "My Codespace",
+  "name": "StarkLedger Android Dev",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "postCreateCommand": "bash .devcontainer/setup-android-dev.sh",
   "customizations": {
     "vscode": {
       "settings": {
         "chat.tools.global.autoApprove": true,
         "chat.tools.terminal.enableAutoApprove": true
-      }
+      },
+      "extensions": [
+        "Google.android-ndk-manager",
+        "Dart-Code.flutter"
+      ]
     }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
   }
 }
