@@ -58,9 +58,14 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      # 6) Build Release APK (Signed with Debug Key)
+      # 6) Build Release APK (Signed with the generated keystore above)
       - name: Build Release APK
         run: ./gradlew assembleRelease
+        env:
+          RELEASE_STORE_FILE: release.keystore
+          RELEASE_STORE_PASSWORD: password123
+          RELEASE_KEY_ALIAS: release
+          RELEASE_KEY_PASSWORD: password123
 
       # 7) Create GitHub Release and Upload APKs
       - name: Create Release
