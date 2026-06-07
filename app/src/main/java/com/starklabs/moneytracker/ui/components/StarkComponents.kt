@@ -2,6 +2,7 @@ package com.starklabs.moneytracker.ui.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -81,7 +82,15 @@ fun StarkCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Surface(
-        modifier = modifier.clip(RoundedCornerShape(cornerRadius)),
+        modifier = modifier
+            .clip(RoundedCornerShape(cornerRadius))
+            .border(
+                width = 1.dp,
+                brush = Brush.linearGradient(
+                    listOf(Color.White.copy(alpha = 0.05f), Color.Transparent)
+                ),
+                shape = RoundedCornerShape(cornerRadius)
+            ),
         color = backgroundColor,
         shape = RoundedCornerShape(cornerRadius)
     ) {
@@ -126,6 +135,7 @@ fun StarkClickableCard(
 fun TransactionRow(
     transaction: com.starklabs.moneytracker.data.Transaction,
     modifier: Modifier = Modifier,
+    accountName: String? = null,
     onClick: () -> Unit = {}
 ) {
     val isDebit = transaction.type == "DEBIT"
@@ -165,18 +175,32 @@ fun TransactionRow(
                 )
             }
             Spacer(modifier = Modifier.width(16.dp))
-            Column {
+            Column(modifier = Modifier.padding(end = 16.dp)) {
                 Text(
                     text = transaction.merchant,
                     style = StarkTypography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                     color = OnSurface,
-                    maxLines = 1
+                    maxLines = 2
                 )
-                Text(
-                    text = "${transaction.merchant} • ${formatStarkDate(transaction.date)}",
-                    style = StarkTypography.labelSmall,
-                    color = OnSurfaceVariant
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = formatStarkDate(transaction.date),
+                        style = StarkTypography.labelSmall,
+                        color = OnSurfaceVariant
+                    )
+                    if (accountName != null) {
+                        Text(
+                            text = " • ",
+                            style = StarkTypography.labelSmall,
+                            color = OnSurfaceVariant
+                        )
+                        Text(
+                            text = accountName,
+                            style = StarkTypography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = PrimaryContainer
+                        )
+                    }
+                }
             }
         }
         Text(
@@ -187,14 +211,90 @@ fun TransactionRow(
     }
 }
 
+@Composable
+fun GlobalAccountSelector(
+    accounts: List<com.starklabs.moneytracker.data.Account>,
+    selectedAccountId: Int,
+    onAccountSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedAccount = if (selectedAccountId == -1) "All Accounts"
+                          else accounts.find { it.id == selectedAccountId }?.name ?: "All Accounts"
+
+    Box(modifier = modifier) {
+        Surface(
+            onClick = { expanded = true },
+            color = SurfaceContainerHigh.copy(alpha = 0.5f),
+            shape = RoundedCornerShape(100.dp),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f))
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = selectedAccount,
+                    style = StarkTypography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = Primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = if (expanded) Icons.Sharp.KeyboardArrowUp else Icons.Sharp.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = Primary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .background(SurfaceContainerHigh)
+                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(12.dp))
+        ) {
+            DropdownMenuItem(
+                text = { Text("All Accounts", style = StarkTypography.bodyMedium) },
+                onClick = {
+                    onAccountSelected(-1)
+                    expanded = false
+                },
+                colors = MenuDefaults.itemColors(textColor = OnSurface)
+            )
+            accounts.filter { it.isActive }.forEach { account ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(account.name, style = StarkTypography.bodyMedium)
+                            if (account.last4Digits != null) {
+                                Text("•••• ${account.last4Digits}", style = StarkTypography.labelSmall, color = OnSurfaceVariant)
+                            }
+                        }
+                    },
+                    onClick = {
+                        onAccountSelected(account.id)
+                        expanded = false
+                    },
+                    colors = MenuDefaults.itemColors(textColor = OnSurface)
+                )
+            }
+        }
+    }
+}
+
 fun formatStarkDate(timestamp: Long): String {
     val sdf = java.text.SimpleDateFormat("dd MMM", java.util.Locale.getDefault())
-    val now = java.util.Calendar.getInstance()
-    val date = java.util.Calendar.getInstance().apply { timeInMillis = timestamp }
+    val nowMillis = System.currentTimeMillis()
 
-    return when {
-        now.get(java.util.Calendar.DATE) == date.get(java.util.Calendar.DATE) -> "Today"
-        now.get(java.util.Calendar.DATE) - 1 == date.get(java.util.Calendar.DATE) -> "Yesterday"
+    // Compare by calendar day using epoch-day to avoid month-boundary bugs
+    val nowDay = nowMillis / 86_400_000L
+    val dateDay = timestamp / 86_400_000L
+
+    return when (nowDay - dateDay) {
+        0L -> "Today"
+        1L -> "Yesterday"
         else -> sdf.format(java.util.Date(timestamp))
     }
 }
@@ -215,9 +315,24 @@ fun StarkBottomNavigationBar(navController: NavController) {
         modifier = Modifier
             .fillMaxWidth()
             .height(80.dp)
-            .background(Color(0x991C1B1B)) // Glass effect background
+            .background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC0E0E0E)))) // Deep fade
             .padding(bottom = 12.dp)
     ) {
+        // Blur background simulation
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0x991C1B1B))
+                .border(
+                    width = 1.dp,
+                    brush = Brush.verticalGradient(
+                        listOf(Color.White.copy(alpha = 0.15f), Color.Transparent)
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                )
+        )
         Row(
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.SpaceAround,

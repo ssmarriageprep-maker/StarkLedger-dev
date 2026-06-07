@@ -207,6 +207,16 @@ object SmsParser {
         Pattern.CASE_INSENSITIVE
     )
 
+    // Pre-compiled patterns for merchant cleaning to avoid redundant allocations in loops
+    private val MERCHANT_TRUNCATION_PREFIX = Pattern.compile("^\\.{1,2}")
+    private val MERCHANT_TRUNCATION_SUFFIX = Pattern.compile("_+$")
+    private val MERCHANT_DELIMITERS_PATTERN = Pattern.compile(
+        "(?i)\\s+(?:via|on|from|a/c|account|ref|txn|utr|to|card ending|at|for|using|with|is|not you|if not)\\b"
+    )
+    private val WHITESPACE_PATTERN = Pattern.compile("\\s+")
+    private val MERCHANT_TRAILING_PUNCTUATION = Pattern.compile("[.,:\\-]+$")
+    private val PHONE_NUMBER_PATTERN = Pattern.compile(".*\\d{10,}.*")
+
     // ════════════════════════════════════════════════════════════════════════
     //  PUBLIC API
     // ════════════════════════════════════════════════════════════════════════
@@ -529,23 +539,23 @@ object SmsParser {
         var candidate = raw.trim()
 
         // Strip HDFC card spend truncation artifacts: leading dots, trailing underscore
-        candidate = candidate.replace(Regex("^\\.{1,2}"), "").trim()
-        candidate = candidate.replace(Regex("_+$"), "").trim()
+        candidate = MERCHANT_TRUNCATION_PREFIX.matcher(candidate).replaceFirst("").trim()
+        candidate = MERCHANT_TRUNCATION_SUFFIX.matcher(candidate).replaceFirst("").trim()
 
         // Truncate at delimiter keywords
-        val delimitersRegex = Regex("(?i)\\s+(?:via|on|from|a/c|account|ref|txn|utr|to|card ending|at|for|using|with|is|not you|if not)\\b")
-        val match = delimitersRegex.find(candidate)
-        if (match != null) {
-            candidate = candidate.substring(0, match.range.first).trim()
+        val delimiterMatcher = MERCHANT_DELIMITERS_PATTERN.matcher(candidate)
+        if (delimiterMatcher.find()) {
+            candidate = candidate.substring(0, delimiterMatcher.start()).trim()
         }
 
-        candidate = candidate.replace(Regex("\\s+"), " ").trim()
-        candidate = candidate.replace(Regex("[.,:\\-]+$"), "").trim()
+        candidate = WHITESPACE_PATTERN.matcher(candidate).replaceAll(" ").trim()
+        candidate = MERCHANT_TRAILING_PUNCTUATION.matcher(candidate).replaceFirst("").trim()
 
         // Reject phone numbers, URLs, bank names, payment gateways
-        val isPhone = candidate.matches(Regex(".*\\d{10,}.*"))
+        val isPhone = PHONE_NUMBER_PATTERN.matcher(candidate).matches()
         val isUrl = candidate.contains("http") || candidate.contains(".com") || candidate.contains(".in")
-        val isBankName = KNOWN_BANKS.any { b -> candidate.split(Regex("\\s+")).any { it.equals(b, ignoreCase = true) } }
+        // Optimization: Use pre-compiled BANK_PATTERN instead of manual split + any
+        val isBankName = BANK_PATTERN.matcher(candidate).find()
         val isGateway = PAYMENT_GATEWAYS.any { candidate.equals(it, ignoreCase = true) }
 
         return if (!isPhone && !isUrl && !isBankName && !isGateway && candidate.length > 2) candidate else null
@@ -622,15 +632,18 @@ object SmsParser {
     //  UTILITIES
     // ════════════════════════════════════════════════════════════════════════
 
+    // Matches any run of whitespace (spaces, tabs, CR, LF, etc.).
+    private val ANY_WHITESPACE = Pattern.compile("\\s+")
+
     /**
-     * Normalize: merge multi-line fragments, collapse runs of whitespace to single space.
+     * Normalize before hashing/parsing: collapse EVERY run of whitespace — single
+     * or multiple, including tabs, CR and LF — to one space, then trim.
+     *
+     * This is foundational to deduplication: "Sent Rs.100", "Sent  Rs.100 ",
+     * "Sent\tRs.100" and "Sent\r\nRs.100" must all hash identically.
      */
     private fun normalizeMessage(body: String): String {
-        return body
-            .replace("\r\n", " ")
-            .replace("\n", " ")
-            .replace(Regex("\\s{2,}"), " ")
-            .trim()
+        return ANY_WHITESPACE.matcher(body).replaceAll(" ").trim()
     }
 
     /**

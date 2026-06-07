@@ -2,6 +2,12 @@ package com.starklabs.moneytracker.ui.settings
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.starklabs.moneytracker.sms.SmsScanner
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,6 +49,59 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    // Export every transaction to a CSV file and hand it to the system share sheet.
+    val exportCsv = {
+        scope.launch {
+            try {
+                val csv = repository.getExportDataCsv()
+                val file = File(context.cacheDir, "starkledger_export.csv")
+                FileWriter(file).use { it.write(csv) }
+                val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                val share = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/csv"
+                    putExtra(Intent.EXTRA_STREAM, uri)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                context.startActivity(Intent.createChooser(share, "Export Transactions"))
+            } catch (e: Exception) {
+                Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+        Unit
+    }
+
+    // Re-scan the SMS inbox. Persistent hashing means re-runs only add new transactions.
+    val runRescan = {
+        scope.launch {
+            val result = SmsScanner.scan(context, repository)
+            Toast.makeText(
+                context,
+                "Scan complete: ${result.transactionsCreated} new transactions.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+        Unit
+    }
+    val smsPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) runRescan()
+        else Toast.makeText(context, "SMS permission is required to scan.", Toast.LENGTH_LONG).show()
+    }
+    val onRescanClick = {
+        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_SMS)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            runRescan()
+        } else {
+            smsPermissionLauncher.launch(android.Manifest.permission.READ_SMS)
+        }
+    }
+
+    // Biometric lock preference (persisted in SecurityRepository / DataStore).
+    val securityRepository = remember { com.starklabs.moneytracker.data.SecurityRepository(context) }
+    val biometricEnabled by securityRepository.biometricEnabledFlow.collectAsState(initial = true)
 
     val factory = AppSettingsViewModelFactory(appSettingsRepository)
     val viewModel: AppSettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
@@ -132,10 +191,18 @@ fun SettingsScreen(
                     icon = Icons.Sharp.Fingerprint,
                     title = "Biometric Lock",
                     subtitle = "ENHANCED SECURITY",
+                    onClick = { scope.launch { securityRepository.setBiometricEnabled(!biometricEnabled) } },
                     trailing = {
-                         Box(modifier = Modifier.size(width = 40.dp, height = 20.dp).clip(RoundedCornerShape(10.dp)).background(OutlineVariant.copy(alpha = 0.3f))) {
-                            Box(modifier = Modifier.padding(2.dp).size(16.dp).clip(RoundedCornerShape(8.dp)).background(Outline))
-                         }
+                        Switch(
+                            checked = biometricEnabled,
+                            onCheckedChange = { scope.launch { securityRepository.setBiometricEnabled(it) } },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = OnPrimary,
+                                checkedTrackColor = PrimaryContainer,
+                                uncheckedThumbColor = Outline,
+                                uncheckedTrackColor = OutlineVariant.copy(alpha = 0.3f)
+                            )
+                        )
                     }
                 )
 
@@ -143,17 +210,18 @@ fun SettingsScreen(
 
                 SettingsItem(
                     icon = Icons.Sharp.Lock,
-                    title = "Data & Privacy",
-                    subtitle = "ENCRYPTION & EXPORTS",
-                    onClick = { /* Export Logic */ }
+                    title = "Export Transactions",
+                    subtitle = "SHARE AS CSV",
+                    onClick = { exportCsv() }
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 SettingsItem(
                     icon = Icons.Sharp.QrCodeScanner,
-                    title = "SMS Parsing Settings",
+                    title = "Re-scan SMS Inbox",
                     subtitle = "AUTOMATED TRACKING",
+                    onClick = { onRescanClick() },
                     trailing = {
                         Surface(color = PrimaryContainer.copy(alpha = 0.1f), shape = RoundedCornerShape(4.dp)) {
                             Text("Active", style = StarkTypography.labelLarge.copy(color = PrimaryFixedDim, fontSize = 12.sp), modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp))
@@ -164,16 +232,29 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 SettingsItem(
+                    icon = Icons.Sharp.Category,
+                    title = "Manage Categories",
+                    subtitle = "BUDGETS & KEYWORDS",
+                    onClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Categories.route) }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SettingsItem(
                     icon = Icons.Sharp.Info,
                     title = "About StarkLabs",
-                    subtitle = "V2.4.0 • ENTERPRISE EDITION"
+                    subtitle = "V${com.starklabs.moneytracker.BuildConfig.VERSION_NAME} • STARKLABS"
                 )
             }
 
             // Logout Action
             Spacer(modifier = Modifier.height(48.dp))
             Button(
-                onClick = { },
+                onClick = {
+                    navController.navigate(com.starklabs.moneytracker.ui.Screen.Security.route) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
                 border = BorderStroke(1.dp, Error.copy(alpha = 0.2f)),
                 shape = RoundedCornerShape(12.dp),
@@ -189,7 +270,7 @@ fun SettingsScreen(
             Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Brush.horizontalGradient(listOf(Color.Transparent, PrimaryContainer, Color.Transparent))))
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "END-TO-END QUANTUM ENCRYPTION ENABLED",
+                text = "LOCAL ENCRYPTION • OFFLINE FIRST",
                 style = StarkTypography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 2.sp),
                 color = OnSurfaceVariant,
                 modifier = Modifier.fillMaxWidth(),

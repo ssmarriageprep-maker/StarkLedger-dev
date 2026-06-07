@@ -3,6 +3,10 @@ package com.starklabs.moneytracker.ui.analytics
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -20,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,16 +39,35 @@ fun AnalyticsScreen(
     viewModel: AnalyticsViewModel
 ) {
     val state by viewModel.uiState.collectAsState()
+    val selectedAccountId by viewModel.selectedAccountId.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
     
     Scaffold(
         containerColor = SurfaceContainerLowest,
         topBar = {
-            StarkHeader(
-                title = "StarkLedger",
-                onSettingsClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Settings.route) }
-            )
+            Column(modifier = Modifier.background(SurfaceContainerLow)) {
+                StarkHeader(
+                    title = "StarkLedger",
+                    onSettingsClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.Settings.route) }
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    GlobalAccountSelector(
+                        accounts = accounts,
+                        selectedAccountId = selectedAccountId,
+                        onAccountSelected = { viewModel.setSelectedAccount(it) }
+                    )
+                }
+            }
         }
     ) { paddingValues ->
+        var visible by remember { mutableStateOf(false) }
+        LaunchedEffect(Unit) { visible = true }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -54,29 +78,34 @@ fun AnalyticsScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Insight Banner
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(800)) + slideInVertically(tween(800), initialOffsetY = { it / 2 })
+            ) {
             Surface(
                 color = SurfaceContainerLow,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .border(width = 1.dp, color = OutlineVariant.copy(alpha = 0.2f), shape = RoundedCornerShape(12.dp))
-                    .border(width = 2.dp, color = SecondaryContainer, shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 0.dp, bottomEnd = 0.dp))
+                    .border(width = 2.dp, color = state.pulseColor, shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp, bottomStart = 0.dp, bottomEnd = 0.dp))
             ) {
                 Row(
                     modifier = Modifier.padding(24.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("WEEKLY PULSE", style = StarkTypography.labelSmall.copy(color = SecondaryContainer, fontWeight = FontWeight.SemiBold))
+                        Text("WEEKLY PULSE", style = StarkTypography.labelSmall.copy(color = state.pulseColor, fontWeight = FontWeight.SemiBold))
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "You spent 18% more this week",
-                            style = StarkTypography.headlineMedium.copy(fontSize = 28.sp, fontWeight = FontWeight.Bold),
-                            color = OnSurface
+                            text = state.pulseTitle,
+                            style = StarkTypography.headlineMedium.copy(fontSize = 24.sp, fontWeight = FontWeight.Bold),
+                            color = OnSurface,
+                            lineHeight = 30.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Unusual spikes detected in the Travel category. Consider reviewing your last three bookings.",
+                            text = state.pulseDescription,
                             style = StarkTypography.bodyMedium,
                             color = OnSurfaceVariant
                         )
@@ -88,15 +117,20 @@ fun AnalyticsScreen(
                         modifier = Modifier.size(56.dp)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Sharp.Lightbulb, contentDescription = null, tint = SecondaryContainer, modifier = Modifier.size(24.dp))
+                            Icon(Icons.Sharp.Lightbulb, contentDescription = null, tint = state.pulseColor, modifier = Modifier.size(24.dp))
                         }
                     }
                 }
+            }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
             // Main Grid
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(1000)) + slideInVertically(tween(1000), initialOffsetY = { it / 2 })
+            ) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 // Spending Velocity (Line Chart)
                 StarkCard(modifier = Modifier.weight(2f).height(400.dp)) {
@@ -167,10 +201,15 @@ fun AnalyticsScreen(
                     }
                 }
             }
+            }
             
             Spacer(modifier = Modifier.height(32.dp))
 
             // Category Comparison
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(1200)) + slideInVertically(tween(1200), initialOffsetY = { it / 2 })
+            ) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 StarkCard(modifier = Modifier.weight(1f)) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -221,6 +260,7 @@ fun AnalyticsScreen(
                         }
                     }
                 }
+            }
             }
 
             Spacer(modifier = Modifier.height(40.dp))

@@ -16,13 +16,23 @@ class SecurityViewModel(private val repository: SecurityRepository) : ViewModel(
         .map { it != null }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    val storedPin: StateFlow<String?> = repository.pinFlow
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val isBiometricEnabled: StateFlow<Boolean> = repository.biometricEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     fun savePin(pin: String) {
         viewModelScope.launch {
             repository.savePin(pin)
         }
+    }
+
+    fun setBiometricEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.setBiometricEnabled(enabled)
+        }
+    }
+
+    suspend fun verifyPin(inputPin: String): Boolean {
+        return repository.verifyPin(inputPin)
     }
 }
 

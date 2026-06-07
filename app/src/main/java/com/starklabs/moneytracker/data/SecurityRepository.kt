@@ -1,11 +1,14 @@
 package com.starklabs.moneytracker.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.security.MessageDigest
 
 private val Context.dataStore by preferencesDataStore("security_settings")
 
@@ -13,26 +16,64 @@ class SecurityRepository(private val context: Context) {
 
     companion object {
         private val PIN_KEY = stringPreferencesKey("user_pin")
+        private val BIOMETRIC_ENABLED_KEY = booleanPreferencesKey("biometric_enabled")
     }
 
     val pinFlow: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[PIN_KEY]
     }
 
-    suspend fun savePin(pin: String) {
+    /**
+     * Whether biometric unlock is enabled. Defaults to true so existing behavior
+     * (prompt biometric when hardware is available) is preserved until the user
+     * turns it off from Settings.
+     */
+    val biometricEnabledFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[BIOMETRIC_ENABLED_KEY] ?: true
+    }
+
+    suspend fun setBiometricEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
-            preferences[PIN_KEY] = pin
+            preferences[BIOMETRIC_ENABLED_KEY] = enabled
         }
     }
 
-    suspend fun verifyPin(inputPin: String): Boolean {
-        var storedPin: String? = null
+    /**
+     * Stores the SHA-256 hash of the PIN, never the raw value.
+     */
+    suspend fun savePin(pin: String) {
+        val hashedPin = hashPin(pin)
         context.dataStore.edit { preferences ->
-             storedPin = preferences[PIN_KEY]
+            preferences[PIN_KEY] = hashedPin
         }
-        // In a real app we wouldn't read like this for verification, but for this simple flow it works since we need a suspend function or collect. 
-        // Actually slightly cleaner to just collecting first.
-        // Let's rely on flow collection in ViewModel, but for simple checking:
-        return false // Placeholder, logic will be in ViewModel for flow comparison or here if we expose a suspend "getPin"
+    }
+
+    /**
+     * Verifies an input PIN against the stored hash.
+     * Returns true if the PIN matches, false otherwise (including when no PIN is set).
+     */
+    suspend fun verifyPin(inputPin: String): Boolean {
+        val preferences = context.dataStore.data.first()
+        val storedPin = preferences[PIN_KEY] ?: return false
+
+        // 1. Check if it matches as a salted hash (new format)
+        val hashedInput = hashPin(inputPin)
+        if (storedPin == hashedInput) return true
+
+        // 2. Migration: Check if it matches as plaintext (old format - 4 digits)
+        if (storedPin.length == 4 && storedPin == inputPin) {
+            // Automatically migrate to salted hash
+            savePin(inputPin)
+            return true
+        }
+
+        return false
+    }
+
+    private fun hashPin(pin: String): String {
+        val salt = "STARK_LEDGER_2024_SALT" // Static salt to prevent simple rainbow tables
+        val digest = MessageDigest.getInstance("SHA-256")
+        val bytes = digest.digest((salt + pin).toByteArray())
+        return bytes.joinToString("") { "%02x".format(it) }
     }
 }

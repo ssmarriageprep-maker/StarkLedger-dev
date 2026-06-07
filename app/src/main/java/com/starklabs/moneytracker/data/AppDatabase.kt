@@ -2,6 +2,7 @@ package com.starklabs.moneytracker.data
 
 import android.content.Context
 import androidx.room.*
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
@@ -11,10 +12,11 @@ import kotlinx.coroutines.flow.Flow
 data class Account(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val name: String,
-    val type: String, // "CASH", "BANK", "CREDIT_CARD", "UPI"
+    val type: String, // "BANK", "CARD", "WALLET", "CASH"
     val balance: Double,
     val colorHex: String = "#00B0FF",
-    val maskedNumber: String? = null // e.g., "1234" to match with SMS "ac 1234"
+    val last4Digits: String? = null,
+    val isActive: Boolean = true
 )
 
 @Entity(tableName = "categories")
@@ -33,7 +35,14 @@ data class Category(
         ForeignKey(entity = Account::class, parentColumns = ["id"], childColumns = ["accountId"], onDelete = ForeignKey.CASCADE),
         ForeignKey(entity = Category::class, parentColumns = ["id"], childColumns = ["categoryId"], onDelete = ForeignKey.SET_NULL)
     ],
-    indices = [Index(value = ["accountId"]), Index(value = ["categoryId"])]
+    indices = [
+        Index(value = ["accountId"]),
+        Index(value = ["categoryId"]),
+        // Unique hash of the source SMS so re-scanning the inbox never creates
+        // duplicates. NULL for manually-entered transactions (SQLite treats
+        // multiple NULLs as distinct, so manual entries never collide).
+        Index(value = ["smsHash"], unique = true)
+    ]
 )
 data class Transaction(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
@@ -44,7 +53,8 @@ data class Transaction(
     val smsBody: String? = null,
     val accountId: Int, // Now strictly required
     val categoryId: Int? = null, // Can be null if uncategorized
-    val notes: String? = null
+    val notes: String? = null,
+    val smsHash: String? = null // SHA-256 of the parsed SMS, used for dedup
 )
 
 // ------------------- DAOS -------------------
@@ -58,14 +68,17 @@ interface AccountDao {
     suspend fun getAccountById(id: Int): Account?
     
     // Find account by matching last 4 digits
-    @Query("SELECT * FROM accounts WHERE maskedNumber = :last4 LIMIT 1")
-    suspend fun getAccountByMaskedNumber(last4: String): Account?
+    @Query("SELECT * FROM accounts WHERE last4Digits = :last4 LIMIT 1")
+    suspend fun getAccountByLast4(last4: String): Account?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(account: Account): Long
 
     @Update
     suspend fun update(account: Account)
+
+    @Delete
+    suspend fun delete(account: Account)
 
     @Query("UPDATE accounts SET balance = balance - :amount WHERE id = :id")
     suspend fun deductBalance(id: Int, amount: Double)
@@ -84,9 +97,12 @@ interface CategoryDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(category: Category): Long
-    
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(categories: List<Category>)
+
+    @Delete
+    suspend fun delete(category: Category)
 }
 
 @Dao
@@ -109,6 +125,12 @@ interface TransactionDao {
 
     @Update
     suspend fun update(transaction: Transaction)
+
+    @Delete
+    suspend fun delete(transaction: Transaction)
+
+    @Query("UPDATE transactions SET accountId = :targetId WHERE accountId = :sourceId")
+    suspend fun reassignTransactions(sourceId: Int, targetId: Int)
 
     @Query("SELECT SUM(amount) FROM transactions WHERE type = 'DEBIT'")
     fun getTotalSpent(): Flow<Double?>
@@ -143,8 +165,8 @@ interface MerchantCategoryMappingDao {
 // ------------------- DATABASE -------------------
 
 @Database(
-    entities = [Transaction::class, Account::class, Category::class, MerchantCategoryMapping::class], 
-    version = 4, 
+    entities = [Transaction::class, Account::class, Category::class, MerchantCategoryMapping::class],
+    version = 6,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -157,15 +179,28 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        // v5 -> v6: add smsHash column + unique index for cross-scan deduplication.
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE transactions ADD COLUMN smsHash TEXT")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_transactions_smsHash ON transactions(smsHash)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
-                // FALLBACK DESTRUCTIVE MIGRATION FOR DEVELOPMENT SPEED
-                val instance = Room.databaseBuilder(
+                val builder = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "moneytracker_db"
-                ).fallbackToDestructiveMigration()
-                .build()
+                ).addMigrations(MIGRATION_5_6)
+                // Only allow destructive migration in debug builds.
+                // In release, a missing migration will throw IllegalStateException
+                // (fail-loud) instead of silently wiping all user data.
+                if (com.starklabs.moneytracker.BuildConfig.DEBUG) {
+                    builder.fallbackToDestructiveMigration()
+                }
+                val instance = builder.build()
                 INSTANCE = instance
                 instance
             }
