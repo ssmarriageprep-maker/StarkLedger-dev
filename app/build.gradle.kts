@@ -67,6 +67,9 @@ android {
     }
     buildFeatures {
         compose = true
+        // Required for BuildConfig.DEBUG / BuildConfig.VERSION_NAME references in code.
+        // AGP 8+ no longer generates BuildConfig unless this is explicitly enabled.
+        buildConfig = true
     }
 }
 
