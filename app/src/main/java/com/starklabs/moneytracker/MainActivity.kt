@@ -35,14 +35,15 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var repository: MoneyRepository
     private lateinit var appSettingsRepository: AppSettingsRepository
+    private val transactionFilterStore = com.starklabs.moneytracker.domain.TransactionFilterStore()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         repository = MoneyRepository.getInstance(this)
         val securityRepository = com.starklabs.moneytracker.data.SecurityRepository(this)
         appSettingsRepository = AppSettingsRepository(this)
-        
+
         val dashboardViewModelFactory = DashboardViewModelFactory(repository, appSettingsRepository)
         val securityViewModelFactory = com.starklabs.moneytracker.ui.security.SecurityViewModelFactory(securityRepository)
         
@@ -90,7 +91,7 @@ class MainActivity : AppCompatActivity() {
                         com.starklabs.moneytracker.ui.add.AddTransactionScreen(navController, repository)
                     }
                     composable(Screen.Analytics.route) {
-                        val factory = com.starklabs.moneytracker.ui.analytics.AnalyticsViewModelFactory(repository, appSettingsRepository)
+                        val factory = com.starklabs.moneytracker.ui.analytics.AnalyticsViewModelFactory(repository, appSettingsRepository, transactionFilterStore)
                         val viewModel: com.starklabs.moneytracker.ui.analytics.AnalyticsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
                         com.starklabs.moneytracker.ui.analytics.AnalyticsScreen(navController, viewModel)
                     }
@@ -111,7 +112,7 @@ class MainActivity : AppCompatActivity() {
                         com.starklabs.moneytracker.ui.categories.CategoriesScreen(navController, viewModel)
                     }
                     composable(Screen.History.route) {
-                        val factory = com.starklabs.moneytracker.ui.history.HistoryViewModelFactory(repository, appSettingsRepository)
+                        val factory = com.starklabs.moneytracker.ui.history.HistoryViewModelFactory(repository, appSettingsRepository, transactionFilterStore)
                         val viewModel: com.starklabs.moneytracker.ui.history.HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
                         com.starklabs.moneytracker.ui.history.HistoryScreen(navController, viewModel)
                     }

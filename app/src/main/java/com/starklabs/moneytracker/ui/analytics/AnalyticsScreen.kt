@@ -9,6 +9,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -41,7 +43,25 @@ fun AnalyticsScreen(
     val state by viewModel.uiState.collectAsState()
     val selectedAccountId by viewModel.selectedAccountId.collectAsState()
     val accounts by viewModel.accounts.collectAsState()
-    
+    val categories by viewModel.categories.collectAsState()
+    val activeFilter by viewModel.filter.collectAsState()
+    val viewMode by viewModel.viewMode.collectAsState()
+    val yearlyState by viewModel.yearlyState.collectAsState()
+    var showFilterSheet by remember { mutableStateOf(false) }
+
+    if (showFilterSheet) {
+        TransactionFilterSheet(
+            filter = activeFilter,
+            categories = categories,
+            accounts = accounts,
+            onApply = {
+                viewModel.applyFilter(it)
+                showFilterSheet = false
+            },
+            onDismiss = { showFilterSheet = false }
+        )
+    }
+
     Scaffold(
         containerColor = SurfaceContainerLowest,
         topBar = {
@@ -76,6 +96,67 @@ fun AnalyticsScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Spacer(modifier = Modifier.height(24.dp))
+
+            // View mode toggle + advanced filter entry point
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AnalyticsViewModeToggle(
+                    selected = viewMode,
+                    onSelect = { viewModel.setViewMode(it) }
+                )
+
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (activeFilter.isActive) PrimaryContainer.copy(alpha = 0.2f) else SurfaceContainerLow)
+                        .border(
+                            1.dp,
+                            if (activeFilter.isActive) Primary else OutlineVariant.copy(alpha = 0.15f),
+                            RoundedCornerShape(12.dp)
+                        )
+                        .clickable { showFilterSheet = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Sharp.Tune,
+                        contentDescription = "Filter transactions",
+                        tint = if (activeFilter.isActive) Primary else OnSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            ActiveFilterChipsRow(
+                filter = activeFilter,
+                categories = categories,
+                accounts = accounts,
+                onClearDimension = { viewModel.clearFilterDimension(it) },
+                onClearAll = { viewModel.clearAllFilters() },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (activeFilter.isActive) {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            if (viewMode == AnalyticsViewMode.YEARLY) {
+                Spacer(modifier = Modifier.height(8.dp))
+                YearlyAnalyticsContent(
+                    state = yearlyState,
+                    visible = visible,
+                    onYearSelected = { viewModel.setSelectedYear(it) }
+                )
+                Spacer(modifier = Modifier.height(40.dp))
+                return@Column
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             // Insight Banner
             AnimatedVisibility(
@@ -264,6 +345,179 @@ fun AnalyticsScreen(
             }
 
             Spacer(modifier = Modifier.height(40.dp))
+        }
+    }
+}
+
+/** Segmented Month/Year switch driving [AnalyticsViewMode] — mirrors the chip styling used elsewhere. */
+@Composable
+private fun AnalyticsViewModeToggle(
+    selected: AnalyticsViewMode,
+    onSelect: (AnalyticsViewMode) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(SurfaceContainerLow)
+            .border(1.dp, OutlineVariant.copy(alpha = 0.15f), RoundedCornerShape(12.dp))
+            .padding(4.dp)
+    ) {
+        listOf(AnalyticsViewMode.MONTHLY to "Month", AnalyticsViewMode.YEARLY to "Year").forEach { (mode, label) ->
+            val isSelected = selected == mode
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (isSelected) PrimaryContainer.copy(alpha = 0.2f) else Color.Transparent)
+                    .clickable { onSelect(mode) }
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    label,
+                    style = StarkTypography.labelLarge.copy(fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal),
+                    color = if (isSelected) Primary else OnSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Yearly Analytics body: Total Income/Expense/Savings, Top Categories, Monthly Trend.
+ * Reuses [AnimatedDonutChart] and [GlowingLineChart] from Charts.kt — no bespoke chart code.
+ */
+@Composable
+private fun YearlyAnalyticsContent(
+    state: YearlyAnalyticsState,
+    visible: Boolean,
+    onYearSelected: (Int) -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(800)) + slideInVertically(tween(800), initialOffsetY = { it / 2 })
+    ) {
+        Column {
+            // Year selector
+            if (state.availableYears.size > 1) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    state.availableYears.forEach { year ->
+                        val isSelected = year == state.year
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = { onYearSelected(year) },
+                            label = { Text(year.toString()) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = PrimaryContainer.copy(alpha = 0.2f),
+                                selectedLabelColor = Primary,
+                                containerColor = SurfaceContainerLow,
+                                labelColor = OnSurfaceVariant
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = isSelected,
+                                borderColor = OutlineVariant.copy(alpha = 0.3f),
+                                selectedBorderColor = Primary
+                            )
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+
+            // Totals
+            StarkCard(modifier = Modifier.fillMaxWidth()) {
+                Text("${state.year} Overview", style = StarkTypography.titleLarge)
+                Spacer(modifier = Modifier.height(20.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    StarkStat(label = "Total Income", value = "₹${String.format("%,.0f", state.totalIncome)}", valueColor = TertiaryContainer)
+                    StarkStat(label = "Total Expense", value = "₹${String.format("%,.0f", state.totalExpense)}", valueColor = Error)
+                    StarkStat(
+                        label = "Savings",
+                        value = "₹${String.format("%,.0f", state.savings)}",
+                        valueColor = if (state.savings >= 0) TertiaryContainer else Error
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                // Monthly Trend (Line Chart) — reuses GlowingLineChart, same as Spending Velocity
+                StarkCard(modifier = Modifier.weight(2f).height(360.dp)) {
+                    Text("Monthly Trend", style = StarkTypography.titleLarge)
+                    Text("INCOME VS EXPENSE", style = StarkTypography.labelSmall)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                        GlowingLineChart(
+                            data = state.monthlyExpenseTrend,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        GlowingLineChart(
+                            data = state.monthlyIncomeTrend,
+                            modifier = Modifier.fillMaxSize(),
+                            lineColor = TertiaryContainer,
+                            fillStartColor = TertiaryContainer.copy(alpha = 0.25f),
+                            fillEndColor = Color.Transparent
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        state.monthLabels.forEach { label ->
+                            Text(label, style = StarkTypography.labelSmall.copy(fontSize = 9.sp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(PrimaryContainer))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Expense", style = StarkTypography.labelSmall, color = OnSurfaceVariant)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(TertiaryContainer))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Income", style = StarkTypography.labelSmall, color = OnSurfaceVariant)
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(24.dp))
+
+                // Top Categories (Donut Chart) — reuses AnimatedDonutChart, same as Composition
+                StarkCard(modifier = Modifier.weight(1f).height(360.dp)) {
+                    Text("Top Categories", style = StarkTypography.titleLarge)
+                    Text("BY YEARLY SPEND", style = StarkTypography.labelSmall)
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Box(modifier = Modifier.size(140.dp).align(Alignment.CenterHorizontally), contentAlignment = Alignment.Center) {
+                        AnimatedDonutChart(slices = state.topCategorySlices, modifier = Modifier.fillMaxSize())
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Column {
+                        if (state.topCategorySlices.isEmpty()) {
+                            Text("No spending recorded yet", style = StarkTypography.bodySmall, color = OnSurfaceVariant)
+                        } else {
+                            state.topCategorySlices.take(3).forEach { slice ->
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(slice.color))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(slice.label, style = StarkTypography.bodySmall, color = OnSurface)
+                                    }
+                                    Text("${(slice.value * 100).toInt()}%", style = StarkTypography.labelSmall)
+                                }
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

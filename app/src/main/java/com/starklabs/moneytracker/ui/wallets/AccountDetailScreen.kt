@@ -22,6 +22,7 @@ import com.starklabs.moneytracker.data.Account
 import com.starklabs.moneytracker.data.MoneyRepository
 import com.starklabs.moneytracker.data.Transaction
 import com.starklabs.moneytracker.data.Category
+import com.starklabs.moneytracker.domain.AccountAnalyticsEngine
 import com.starklabs.moneytracker.ui.components.*
 import com.starklabs.moneytracker.ui.theme.*
 import kotlinx.coroutines.flow.firstOrNull
@@ -108,6 +109,11 @@ fun AccountDetailScreen(
             }
             val spentThisMonth = monthlyTransactions.filter { it.type == "DEBIT" }.sumOf { it.amount }
 
+            // Account intelligence layer: income/expense/savings, top categories, top merchants, recent activity.
+            val analytics = remember(transactions, categories) {
+                AccountAnalyticsEngine.compute(transactions, categories)
+            }
+
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -163,24 +169,32 @@ fun AccountDetailScreen(
 
                 item {
                     Spacer(modifier = Modifier.height(32.dp))
-                    Text("CATEGORY BREAKDOWN", style = StarkTypography.titleMedium, color = OnSurface)
+                    Text("ACCOUNT INTELLIGENCE", style = StarkTypography.titleMedium, color = OnSurface)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        StarkStat(label = "Income", value = "₹${String.format("%,.0f", analytics.income)}", valueColor = TertiaryContainer)
+                        StarkStat(label = "Expense", value = "₹${String.format("%,.0f", analytics.expense)}", valueColor = Error)
+                        StarkStat(
+                            label = "Savings",
+                            value = "₹${String.format("%,.0f", analytics.savings)}",
+                            valueColor = if (analytics.savings >= 0) TertiaryContainer else Error
+                        )
+                        StarkStat(label = "Transactions", value = "${analytics.transactionCount}", valueColor = Primary)
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Text("TOP CATEGORIES", style = StarkTypography.titleMedium, color = OnSurface)
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                val categorySpending = monthlyTransactions.filter { it.type == "DEBIT" }
-                    .groupBy { it.categoryId }
-                    .map { (catId, txs) ->
-                        val cat = categories.find { it.id == catId }
-                        cat to txs.sumOf { it.amount }
-                    }
-                    .sortedByDescending { it.second }
-
-                if (categorySpending.isEmpty()) {
+                if (analytics.topCategories.isEmpty()) {
                     item {
-                        Text("No data for this month", style = StarkTypography.bodyMedium, color = OnSurfaceVariant)
+                        Text("No spending recorded yet", style = StarkTypography.bodyMedium, color = OnSurfaceVariant)
                     }
                 } else {
-                    items(categorySpending) { (cat, amount) ->
+                    items(analytics.topCategories, key = { "category_${it.categoryId}" }) { categoryAmount ->
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -191,12 +205,47 @@ fun AccountDetailScreen(
                                     modifier = Modifier.size(32.dp).clip(CircleShape).background(SurfaceContainerHighest),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    CategoryIcon(cat?.name, modifier = Modifier.size(16.dp))
+                                    CategoryIcon(categoryAmount.name, modifier = Modifier.size(16.dp))
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text(cat?.name ?: "Uncategorized", style = StarkTypography.bodyMedium, color = OnSurface)
+                                Text(categoryAmount.name, style = StarkTypography.bodyMedium, color = OnSurface)
                             }
-                            Text("₹${String.format("%,.0f", amount)}", style = StarkTypography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = OnSurface)
+                            Text("₹${String.format("%,.0f", categoryAmount.amount)}", style = StarkTypography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = OnSurface)
+                        }
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Text("TOP MERCHANTS", style = StarkTypography.titleMedium, color = OnSurface)
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                if (analytics.topMerchants.isEmpty()) {
+                    item {
+                        Text("No merchant activity recorded yet", style = StarkTypography.bodyMedium, color = OnSurfaceVariant)
+                    }
+                } else {
+                    items(analytics.topMerchants, key = { "merchant_${it.merchant}" }) { merchantAmount ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier.size(32.dp).clip(CircleShape).background(SurfaceContainerHighest),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Sharp.Payments, contentDescription = null, tint = PrimaryContainer, modifier = Modifier.size(16.dp))
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column {
+                                    Text(merchantAmount.merchant, style = StarkTypography.bodyMedium, color = OnSurface)
+                                    Text("${merchantAmount.count} transactions", style = StarkTypography.labelSmall, color = OnSurfaceVariant)
+                                }
+                            }
+                            Text("₹${String.format("%,.0f", merchantAmount.amount)}", style = StarkTypography.bodyMedium.copy(fontWeight = FontWeight.Bold), color = OnSurface)
                         }
                     }
                 }
@@ -207,7 +256,7 @@ fun AccountDetailScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                items(transactions.take(10)) { t ->
+                items(analytics.recentTransactions, key = { it.id }) { t ->
                     TransactionRow(transaction = t, onClick = { /* Navigate to detail? */ })
                 }
             }
