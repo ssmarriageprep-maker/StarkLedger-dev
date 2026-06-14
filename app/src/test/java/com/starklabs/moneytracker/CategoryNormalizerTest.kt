@@ -32,7 +32,8 @@ class CategoryNormalizerTest {
     @Test
     fun `special characters are replaced with spaces and collapsed`() {
         assertEquals("MR DIY", CategoryNormalizer.normalizeMerchant("MR DIY_"))
-        assertEquals("STARBUCKS MALL", CategoryNormalizer.normalizeMerchant("STARBUCKS @ MALL"))
+        // "@" is removed and the result is title-cased by MerchantNormalizationEngine
+        assertEquals("Starbucks Mall", CategoryNormalizer.normalizeMerchant("STARBUCKS @ MALL"))
     }
 
     @Test
@@ -48,6 +49,7 @@ class CategoryNormalizerTest {
 
     @Test
     fun `empty input returns empty string`() {
+        // MerchantNormalizationEngine preserves backward-compat by returning "" for blank input
         assertEquals("", CategoryNormalizer.normalizeMerchant(""))
     }
 }

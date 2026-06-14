@@ -75,7 +75,8 @@ class InsightsEngineTest {
     fun `dominant single transaction triggers the massive-chunk insight`() {
         val txns = listOf(tx(600.0, merchant = "BigBuy", categoryId = 1), tx(200.0, categoryId = 2), tx(200.0, categoryId = 3))
         val out = InsightsEngine.generateInsights(txns, mapOf(1 to "Food", 2 to "Rent", 3 to "Bills"))
-        assertTrue(out.any { it.contains("massive 50%+") && it.contains("BigBuy") })
+        // Merchant name is normalised (title-cased) by MerchantNormalizationEngine; use ignoreCase
+        assertTrue(out.any { it.contains("massive 50%+") && it.contains("BigBuy", ignoreCase = true) })
     }
 
     @Test
