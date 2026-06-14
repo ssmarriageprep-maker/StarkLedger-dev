@@ -5,6 +5,10 @@ import com.starklabs.moneytracker.data.AccountDao
 import com.starklabs.moneytracker.data.CategoryDao
 import com.starklabs.moneytracker.data.TransactionDao
 import com.starklabs.moneytracker.data.MerchantCategoryMappingDao
+import com.starklabs.moneytracker.data.MerchantAlias
+import com.starklabs.moneytracker.data.MerchantAliasDao
+import com.starklabs.moneytracker.domain.MerchantNormalizationEngine
+import com.starklabs.moneytracker.domain.MerchantResolution
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import java.util.concurrent.ConcurrentHashMap
@@ -14,7 +18,8 @@ class MoneyRepository(
     private val transactionDao: TransactionDao,
     private val accountDao: AccountDao,
     private val categoryDao: CategoryDao,
-    private val merchantMappingDao: MerchantCategoryMappingDao
+    private val merchantMappingDao: MerchantCategoryMappingDao,
+    private val merchantAliasDao: MerchantAliasDao
 ) {
     // Cache compiled patterns for category/keyword matching to avoid thousands
     // of redundant Regex compilations during bulk SMS scans.
@@ -32,7 +37,8 @@ class MoneyRepository(
                         db.transactionDao(),
                         db.accountDao(),
                         db.categoryDao(),
-                        db.merchantMappingDao()
+                        db.merchantMappingDao(),
+                        db.merchantAliasDao()
                     ).also { INSTANCE = it }
                 }
             }
@@ -199,6 +205,97 @@ class MoneyRepository(
         }
     }
     
+    // ---- Merchant Aliases (Sprint 3A) ----
+
+    /** Live stream of all aliases, ordered by canonical name then alias text. */
+    val allMerchantAliases: Flow<List<MerchantAlias>> = merchantAliasDao.getAllAliases()
+
+    /**
+     * Resolves [raw] to a [MerchantResolution]: alias table checked first (confidence 100),
+     * falling back to [MerchantNormalizationEngine] (confidence 40–95).
+     */
+    suspend fun resolveMerchant(raw: String): MerchantResolution {
+        val key = raw.trim().lowercase()
+        val alias = merchantAliasDao.getAliasByKey(key)
+        return if (alias != null) MerchantResolution(alias.canonicalMerchant, 100)
+        else MerchantNormalizationEngine.normalize(raw)
+    }
+
+    /**
+     * Persists a single alias mapping [rawAlias] → [canonicalName].
+     *
+     * Self-mapping ([rawAlias] == [canonicalName] case-insensitively) deletes any existing
+     * override, reverting resolution to the rule engine.
+     *
+     * Collapse: if [canonicalName] is itself an alias of another canonical Z, Z is used instead
+     * to guarantee the no-chain invariant (single-hop resolution at all times).
+     */
+    suspend fun setMerchantAlias(rawAlias: String, canonicalName: String, source: String = "USER") {
+        val aliasKey = rawAlias.trim().lowercase()
+        val canonical = canonicalName.trim()
+
+        if (aliasKey == canonical.lowercase()) {
+            merchantAliasDao.deleteByAliasKey(aliasKey)
+            MerchantNormalizationEngine.clearCache()
+            return
+        }
+
+        // Collapse: if the target canonical is itself aliased, follow through to the final name.
+        val existingForCanonical = merchantAliasDao.getAliasByKey(canonical.lowercase())
+        val finalCanonical = existingForCanonical?.canonicalMerchant ?: canonical
+
+        val existing = merchantAliasDao.getAliasByKey(aliasKey)
+        if (existing != null) {
+            merchantAliasDao.update(existing.copy(canonicalMerchant = finalCanonical, source = source))
+        } else {
+            merchantAliasDao.insert(
+                MerchantAlias(
+                    alias = rawAlias.trim(),
+                    aliasKey = aliasKey,
+                    canonicalMerchant = finalCanonical,
+                    source = source
+                )
+            )
+        }
+        MerchantNormalizationEngine.clearCache()
+    }
+
+    /**
+     * Renames a canonical merchant [from] → [to], cascading all existing aliases that pointed
+     * to [from] so they now point to [to]. Maintains the no-loop invariant:
+     *   - self-rename is a no-op
+     *   - if renaming would create a cycle (resolved [to] == [from]), the call is a no-op
+     *   - if [to] is itself an alias, the chain is collapsed to its canonical
+     */
+    suspend fun renameMerchant(from: String, to: String, source: String = "USER") {
+        val fromTrimmed = from.trim()
+        val toTrimmed = to.trim()
+        if (fromTrimmed.equals(toTrimmed, ignoreCase = true)) return
+
+        // Collapse: if `to` is an alias of Z, use Z as the final canonical.
+        val existingForTo = merchantAliasDao.getAliasByKey(toTrimmed.lowercase())
+        val finalCanonical = existingForTo?.canonicalMerchant ?: toTrimmed
+
+        // Loop guard: renaming A → B where B eventually resolves back to A is rejected.
+        if (finalCanonical.equals(fromTrimmed, ignoreCase = true)) return
+
+        // Cascade all existing aliases that pointed to `from` → now point to `finalCanonical`.
+        merchantAliasDao.reassignCanonical(
+            oldCanonicalKey = fromTrimmed.lowercase(),
+            newCanonical = finalCanonical
+        )
+
+        // Record the rename itself as an alias so raw strings matching `from` resolve correctly.
+        setMerchantAlias(rawAlias = fromTrimmed, canonicalName = finalCanonical, source = source)
+        // setMerchantAlias already calls clearCache(); no need to call it again here.
+    }
+
+    /** Deletes an alias row. Resolution reverts to [MerchantNormalizationEngine] for that key. */
+    suspend fun deleteMerchantAlias(alias: MerchantAlias) {
+        merchantAliasDao.delete(alias)
+        MerchantNormalizationEngine.clearCache()
+    }
+
     // Export Logic
     suspend fun getExportDataCsv(): String {
         val transactions = transactionDao.getAllTransactionsOneShot()

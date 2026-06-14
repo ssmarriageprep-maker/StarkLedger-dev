@@ -162,11 +162,65 @@ interface MerchantCategoryMappingDao {
     suspend fun insertOrUpdate(mapping: MerchantCategoryMapping)
 }
 
+// ------------------- MERCHANT ALIASES -------------------
+
+/**
+ * Persisted merchant alias: maps a raw/variant merchant string to a user-confirmed canonical name.
+ *
+ * [alias]    — original user-visible text (display / audit)
+ * [aliasKey] — alias.trim().lowercase() — the normalized lookup key; has a UNIQUE index so
+ *              "AMAZON PAY INDIA", "amazon pay india", and "Amazon Pay India" collapse to one row.
+ * [source]   — "USER" (user-created) or "SYSTEM" (seed / auto-generated)
+ */
+@Entity(
+    tableName = "merchant_aliases",
+    indices = [
+        Index(value = ["canonicalMerchant"]),         // fast "list aliases of X" queries
+        Index(value = ["aliasKey"], unique = true)    // enforces one canonical per normalized key
+    ]
+)
+data class MerchantAlias(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val alias: String,
+    val aliasKey: String,          // alias.trim().lowercase()
+    val canonicalMerchant: String,
+    val createdAt: Long = System.currentTimeMillis(),
+    val source: String = "USER"    // "USER" | "SYSTEM"
+)
+
+@Dao
+interface MerchantAliasDao {
+    @Query("SELECT * FROM merchant_aliases ORDER BY canonicalMerchant, alias")
+    fun getAllAliases(): Flow<List<MerchantAlias>>
+
+    @Query("SELECT * FROM merchant_aliases ORDER BY canonicalMerchant, alias")
+    suspend fun getAllAliasesOneShot(): List<MerchantAlias>
+
+    @Query("SELECT * FROM merchant_aliases WHERE aliasKey = :aliasKey LIMIT 1")
+    suspend fun getAliasByKey(aliasKey: String): MerchantAlias?
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(alias: MerchantAlias): Long
+
+    @Update
+    suspend fun update(alias: MerchantAlias)
+
+    @Delete
+    suspend fun delete(alias: MerchantAlias)
+
+    @Query("DELETE FROM merchant_aliases WHERE aliasKey = :aliasKey")
+    suspend fun deleteByAliasKey(aliasKey: String)
+
+    // Cascade rename: all aliases pointing to oldCanonical are re-pointed to newCanonical.
+    @Query("UPDATE merchant_aliases SET canonicalMerchant = :newCanonical WHERE lower(canonicalMerchant) = :oldCanonicalKey")
+    suspend fun reassignCanonical(oldCanonicalKey: String, newCanonical: String)
+}
+
 // ------------------- DATABASE -------------------
 
 @Database(
-    entities = [Transaction::class, Account::class, Category::class, MerchantCategoryMapping::class],
-    version = 6,
+    entities = [Transaction::class, Account::class, Category::class, MerchantCategoryMapping::class, MerchantAlias::class],
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -174,6 +228,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun accountDao(): AccountDao
     abstract fun categoryDao(): CategoryDao
     abstract fun merchantMappingDao(): MerchantCategoryMappingDao
+    abstract fun merchantAliasDao(): MerchantAliasDao
 
     companion object {
         @Volatile
@@ -187,13 +242,32 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // v6 -> v7: add merchant_aliases table for user-extensible canonical merchant names.
+        // Additive only — no changes to existing tables or data.
+        private val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS merchant_aliases (
+                        id               INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        alias            TEXT    NOT NULL,
+                        aliasKey         TEXT    NOT NULL,
+                        canonicalMerchant TEXT   NOT NULL,
+                        createdAt        INTEGER NOT NULL,
+                        source           TEXT    NOT NULL DEFAULT 'USER'
+                    )
+                """.trimIndent())
+                db.execSQL("CREATE INDEX IF NOT EXISTS index_merchant_aliases_canonicalMerchant ON merchant_aliases(canonicalMerchant)")
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_merchant_aliases_aliasKey ON merchant_aliases(aliasKey)")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val builder = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "moneytracker_db"
-                ).addMigrations(MIGRATION_5_6)
+                ).addMigrations(MIGRATION_5_6, MIGRATION_6_7)
                 // Only allow destructive migration in debug builds.
                 // In release, a missing migration will throw IllegalStateException
                 // (fail-loud) instead of silently wiping all user data.
