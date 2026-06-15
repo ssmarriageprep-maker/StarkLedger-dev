@@ -47,6 +47,7 @@ fun AnalyticsScreen(
     val activeFilter by viewModel.filter.collectAsState()
     val viewMode by viewModel.viewMode.collectAsState()
     val yearlyState by viewModel.yearlyState.collectAsState()
+    val topMerchants by viewModel.topMerchants.collectAsState()
     var showFilterSheet by remember { mutableStateOf(false) }
 
     if (showFilterSheet) {
@@ -206,6 +207,75 @@ fun AnalyticsScreen(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+
+            // Top Merchants
+            if (topMerchants.isNotEmpty()) {
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(tween(950)) + slideInVertically(tween(950), initialOffsetY = { it / 2 })
+                ) {
+                    com.starklabs.moneytracker.ui.components.StarkCard {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text("Top Merchants", style = StarkTypography.titleLarge)
+                                Text("BY SPEND THIS PERIOD", style = StarkTypography.labelSmall)
+                            }
+                            androidx.compose.foundation.text.ClickableText(
+                                text = androidx.compose.ui.text.buildAnnotatedString {
+                                    pushStyle(androidx.compose.ui.text.SpanStyle(color = PrimaryContainer, fontSize = 12.sp))
+                                    append("View All →")
+                                    pop()
+                                },
+                                onClick = { navController.navigate(com.starklabs.moneytracker.ui.Screen.MerchantExplorer.route) }
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            topMerchants.forEachIndexed { index, merchant ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "${index + 1}",
+                                        style = StarkTypography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                        color = OnSurfaceVariant,
+                                        modifier = Modifier.width(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            merchant.canonicalName,
+                                            style = StarkTypography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                            color = OnSurface
+                                        )
+                                        merchant.topCategories.firstOrNull()?.let {
+                                            Text(it.name, style = StarkTypography.labelSmall, color = OnSurfaceVariant)
+                                        }
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            "₹${String.format("%,.0f", merchant.totalSpent)}",
+                                            style = StarkTypography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                            color = PrimaryContainer
+                                        )
+                                        Text(
+                                            "${merchant.transactionCount} txns",
+                                            style = StarkTypography.labelSmall,
+                                            color = OnSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+            }
 
             // Main Grid
             AnimatedVisibility(

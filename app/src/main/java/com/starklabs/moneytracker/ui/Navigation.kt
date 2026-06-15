@@ -13,4 +13,8 @@ sealed class Screen(val route: String) {
     object AccountDetail : Screen("account_detail/{accountId}") {
         fun createRoute(accountId: Int) = "account_detail/$accountId"
     }
+    object MerchantExplorer : Screen("merchant_explorer")
+    object MerchantDetail : Screen("merchant_detail/{merchantName}") {
+        fun createRoute(merchantName: String) = "merchant_detail/${android.net.Uri.encode(merchantName)}"
+    }
 }

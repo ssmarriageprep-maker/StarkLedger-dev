@@ -120,6 +120,16 @@ class MainActivity : AppCompatActivity() {
                         val accountId = backStackEntry.arguments?.getString("accountId")?.toIntOrNull() ?: -1
                         com.starklabs.moneytracker.ui.wallets.AccountDetailScreen(navController, accountId, repository)
                     }
+                    composable(Screen.MerchantExplorer.route) {
+                        val factory = com.starklabs.moneytracker.ui.merchants.MerchantExplorerViewModelFactory(repository)
+                        val viewModel: com.starklabs.moneytracker.ui.merchants.MerchantExplorerViewModel = androidx.lifecycle.viewmodel.compose.viewModel(factory = factory)
+                        com.starklabs.moneytracker.ui.merchants.MerchantExplorerScreen(navController, viewModel)
+                    }
+                    composable(Screen.MerchantDetail.route) { backStackEntry ->
+                        val merchantName = backStackEntry.arguments?.getString("merchantName")
+                            ?.let { android.net.Uri.decode(it) } ?: ""
+                        com.starklabs.moneytracker.ui.merchants.MerchantDetailScreen(navController, merchantName, repository)
+                    }
                 }
                 }
             }

@@ -7,6 +7,9 @@ import com.starklabs.moneytracker.data.Category
 import com.starklabs.moneytracker.data.MoneyRepository
 import com.starklabs.moneytracker.data.Transaction
 import com.starklabs.moneytracker.domain.FilterDimension
+import com.starklabs.moneytracker.domain.MerchantAnalyticsEngine
+import com.starklabs.moneytracker.domain.MerchantNormalizationEngine
+import com.starklabs.moneytracker.domain.MerchantSummary
 import com.starklabs.moneytracker.domain.TransactionFilter
 import com.starklabs.moneytracker.domain.TransactionFilterEngine
 import com.starklabs.moneytracker.domain.TransactionFilterStore
@@ -247,6 +250,21 @@ class AnalyticsViewModel(
      * [Slice]/normalized-series form here, reusing [com.starklabs.moneytracker.ui.components.AnimatedDonutChart]
      * and [com.starklabs.moneytracker.ui.components.GlowingLineChart] in the screen.
      */
+    /** Top 5 merchants by spend for the current account/filter scope, alias-resolved. */
+    val topMerchants: StateFlow<List<MerchantSummary>> = combine(
+        scopedData,
+        repository.allMerchantAliases
+    ) { scope, aliases ->
+        val aliasMap = aliases.associateBy({ it.aliasKey }, { it.canonicalMerchant })
+        val resolve = { raw: String ->
+            val key = raw.trim().lowercase()
+            aliasMap[key] ?: MerchantNormalizationEngine.normalize(raw).canonicalName
+        }
+        MerchantAnalyticsEngine.computeAll(scope.transactions, scope.categories, resolve)
+            .sortedByDescending { it.totalSpent }
+            .take(5)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val yearlyState: StateFlow<YearlyAnalyticsState> = combine(scopedData, _selectedYear) { scope, year ->
         val summary = YearlyAnalyticsEngine.compute(scope.transactions, scope.categories, year)
         val availableYears = YearlyAnalyticsEngine.availableYears(scope.transactions).ifEmpty { listOf(year) }
