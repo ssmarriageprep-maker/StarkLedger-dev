@@ -48,6 +48,7 @@ fun AnalyticsScreen(
     val viewMode by viewModel.viewMode.collectAsState()
     val yearlyState by viewModel.yearlyState.collectAsState()
     val topMerchants by viewModel.topMerchants.collectAsState()
+    val merchantInsights by viewModel.merchantInsights.collectAsState()
     var showFilterSheet by remember { mutableStateOf(false) }
 
     if (showFilterSheet) {
@@ -277,6 +278,17 @@ fun AnalyticsScreen(
                 Spacer(modifier = Modifier.height(32.dp))
             }
 
+            // Merchant Insights
+            if (merchantInsights.isNotEmpty()) {
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(tween(975)) + slideInVertically(tween(975), initialOffsetY = { it / 2 })
+                ) {
+                    MerchantInsightsSection(merchantInsights)
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+
             // Main Grid
             AnimatedVisibility(
                 visible = visible,
@@ -415,6 +427,88 @@ fun AnalyticsScreen(
             }
 
             Spacer(modifier = Modifier.height(40.dp))
+        }
+    }
+}
+
+@Composable
+private fun MerchantInsightsSection(insights: List<com.starklabs.moneytracker.domain.MerchantInsight>) {
+    com.starklabs.moneytracker.ui.components.StarkCard {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text("Merchant Intelligence", style = StarkTypography.titleLarge)
+                Text("SPENDING INSIGHTS", style = StarkTypography.labelSmall)
+            }
+            Surface(
+                color = PrimaryContainer.copy(alpha = 0.12f),
+                shape = androidx.compose.foundation.shape.CircleShape,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        androidx.compose.material.icons.Icons.Sharp.Insights,
+                        contentDescription = null,
+                        tint = PrimaryContainer,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(20.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            insights.forEach { insight -> InsightRow(insight) }
+        }
+    }
+}
+
+@Composable
+private fun InsightRow(insight: com.starklabs.moneytracker.domain.MerchantInsight) {
+    val (icon, tint) = when (insight.type) {
+        com.starklabs.moneytracker.domain.MerchantInsightType.SPENDING_INCREASE ->
+            androidx.compose.material.icons.Icons.Sharp.TrendingUp to Error
+        com.starklabs.moneytracker.domain.MerchantInsightType.SPENDING_DECREASE ->
+            androidx.compose.material.icons.Icons.Sharp.TrendingDown to TertiaryContainer
+        com.starklabs.moneytracker.domain.MerchantInsightType.FASTEST_GROWING ->
+            androidx.compose.material.icons.Icons.Sharp.Bolt to Error.copy(alpha = 0.8f)
+        com.starklabs.moneytracker.domain.MerchantInsightType.TOP_MERCHANT ->
+            androidx.compose.material.icons.Icons.Sharp.EmojiEvents to SecondaryContainer
+        com.starklabs.moneytracker.domain.MerchantInsightType.MERCHANT_CONCENTRATION ->
+            androidx.compose.material.icons.Icons.Sharp.PieChart to OnSurface
+        com.starklabs.moneytracker.domain.MerchantInsightType.RECURRING_MERCHANT ->
+            androidx.compose.material.icons.Icons.Sharp.Repeat to PrimaryContainer.copy(alpha = 0.7f)
+        com.starklabs.moneytracker.domain.MerchantInsightType.HIGH_AVERAGE_SPEND ->
+            androidx.compose.material.icons.Icons.Sharp.AttachMoney to OnSurface
+        com.starklabs.moneytracker.domain.MerchantInsightType.CATEGORY_DOMINANCE ->
+            androidx.compose.material.icons.Icons.Sharp.Category to OnSurfaceVariant
+    }
+
+    Row(verticalAlignment = Alignment.Top) {
+        Surface(
+            color = tint.copy(alpha = 0.10f),
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+            modifier = Modifier.size(32.dp)
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+            }
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                insight.title,
+                style = StarkTypography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = OnSurface
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                insight.description,
+                style = StarkTypography.bodySmall,
+                color = OnSurfaceVariant
+            )
         }
     }
 }

@@ -8,6 +8,8 @@ import com.starklabs.moneytracker.data.MoneyRepository
 import com.starklabs.moneytracker.data.Transaction
 import com.starklabs.moneytracker.domain.FilterDimension
 import com.starklabs.moneytracker.domain.MerchantAnalyticsEngine
+import com.starklabs.moneytracker.domain.MerchantInsight
+import com.starklabs.moneytracker.domain.MerchantInsightsEngine
 import com.starklabs.moneytracker.domain.MerchantNormalizationEngine
 import com.starklabs.moneytracker.domain.MerchantSummary
 import com.starklabs.moneytracker.domain.TransactionFilter
@@ -263,6 +265,39 @@ class AnalyticsViewModel(
         MerchantAnalyticsEngine.computeAll(scope.transactions, scope.categories, resolve)
             .sortedByDescending { it.totalSpent }
             .take(5)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    /**
+     * Merchant intelligence insights for the current scope.
+     * Computes current-month vs previous-month summaries to generate period-over-period signals.
+     */
+    val merchantInsights: StateFlow<List<MerchantInsight>> = combine(
+        scopedData,
+        repository.allMerchantAliases
+    ) { scope, aliases ->
+        val aliasMap = aliases.associateBy({ it.aliasKey }, { it.canonicalMerchant })
+        val resolve = { raw: String ->
+            val key = raw.trim().lowercase()
+            aliasMap[key] ?: MerchantNormalizationEngine.normalize(raw).canonicalName
+        }
+
+        val cal = Calendar.getInstance()
+        // Start of current month
+        cal.set(Calendar.DAY_OF_MONTH, 1)
+        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
+        cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
+        val startOfCurrentMonth = cal.timeInMillis
+        // Start of previous month
+        cal.add(Calendar.MONTH, -1)
+        val startOfPrevMonth = cal.timeInMillis
+
+        val currentTxns = scope.transactions.filter { it.date >= startOfCurrentMonth }
+        val prevTxns    = scope.transactions.filter { it.date in startOfPrevMonth until startOfCurrentMonth }
+
+        val currentSummaries = MerchantAnalyticsEngine.computeAll(currentTxns, scope.categories, resolve)
+        val prevSummaries    = MerchantAnalyticsEngine.computeAll(prevTxns,    scope.categories, resolve)
+
+        MerchantInsightsEngine.generate(currentSummaries, prevSummaries, scope.categories)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val yearlyState: StateFlow<YearlyAnalyticsState> = combine(scopedData, _selectedYear) { scope, year ->
